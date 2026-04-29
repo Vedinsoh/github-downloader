@@ -44,7 +44,7 @@ export function OtherDownloads({
       <summary className="cursor-pointer list-none text-muted-foreground hover:text-foreground">
         <span className="inline-flex items-center gap-2">
           <FileArchive className="size-4" />
-          Downloads for other systems
+          Other downloads
         </span>
       </summary>
       <div className="mt-4 space-y-4">

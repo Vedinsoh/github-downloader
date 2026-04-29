@@ -27,19 +27,29 @@ type Props = {
 }
 
 export function ReleaseCard({ release, owner, repo, visitorOs, latest }: Props) {
-  const enriched = release.assets
+  const assets = release.assets
     .map((a) => ({ asset: a, info: classifyAsset(a.name) }))
     .filter((e) => !e.info.isSkippable)
 
-  const matching = enriched.filter((e) => e.info.os === visitorOs)
-  const other = enriched.filter((e) => e.info.os !== visitorOs)
-  const primary = matching[0] ?? null
+  const matchingAssets = assets.filter((e) => e.info.os === visitorOs)
+  const otherAssets = assets.filter((e) => e.info.os !== visitorOs)
+  const primary = matchingAssets[0] ?? null
 
   const versionLabel = release.tag_name
   const releaseLink = `/${owner}/${repo}/v/${encodeURIComponent(release.tag_name)}`
 
+  let cardClass = ""
+  switch (true) {
+    case latest:
+      cardClass = "ring-green-500"
+      break
+    case release.prerelease:
+      cardClass = "ring-yellow-900 bg-opaque/10"
+      break
+  }
+
   return (
-    <Card className={latest ? "ring-green-500" : ""}>
+    <Card className={cardClass}>
       <CardHeader className="flex flex-row flex-wrap items-center gap-2">
         <div className='flex flex-1 items-center gap-2'>
           <CardTitle className="text-xl">
@@ -48,16 +58,12 @@ export function ReleaseCard({ release, owner, repo, visitorOs, latest }: Props) 
             </Link>
           </CardTitle>
           {release.prerelease ? <Badge variant="destructive">Beta</Badge> : null}
-          {latest ? (
-            <Badge variant="success">
-              Latest
-            </Badge>
-          ) : null}
+          {latest ? (<Badge variant="success">Latest</Badge>) : null}
         </div>
         <div>
           {release.published_at ? (
             <span className="w-full text-xs text-muted-foreground">
-              Published {dayjs(release.published_at).fromNow()}
+              {dayjs(release.published_at).fromNow()}
             </span>
           ) : null}
         </div>
@@ -75,7 +81,7 @@ export function ReleaseCard({ release, owner, repo, visitorOs, latest }: Props) 
             repo={`${owner}/${repo}`}
             primary
           />
-        ) : enriched.length > 0 ? (
+        ) : assets.length > 0 ? (
           <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
             No download for {OS_LABELS[visitorOs]} in this version. See other
             systems below.
@@ -86,8 +92,8 @@ export function ReleaseCard({ release, owner, repo, visitorOs, latest }: Props) 
           </p>
         )}
 
-        {other.length > 0 ? (
-          <OtherDownloads items={other} repo={`${owner}/${repo}`} />
+        {otherAssets.length > 0 ? (
+          <OtherDownloads items={otherAssets} repo={`${owner}/${repo}`} />
         ) : null}
       </CardContent>
     </Card>

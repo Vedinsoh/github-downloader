@@ -15,6 +15,7 @@ import {
 import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
 import React from 'react'
+import { BetaToggle } from '@/components/beta-toggle'
 
 const MAX_PAGE = 100
 
@@ -43,7 +44,7 @@ export async function generateMetadata({
     r.data.description ??
     `Download the latest version of ${r.data.name} by ${r.data.owner.login}.`
   return {
-    title: `Download ${r.data.name} – ${r.data.owner.login}`,
+    title: `Download ${r.data.name} by ${r.data.owner.login}`,
     description: `Download the latest version of ${r.data.name} by ${r.data.owner.login}. ${desc}`.slice(
       0,
       160
@@ -120,6 +121,8 @@ export default async function RepoPage({
     <>
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
         <RepoHeader repo={repoResult.data} />
+
+        <BetaToggle />
 
         {releases.length === 0 && page === 1 ? (
           <NoReleasesState ownerRepo={ownerRepo} />
