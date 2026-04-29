@@ -86,7 +86,6 @@ export default async function VersionPage({
           owner={owner}
           repo={repo}
           visitorOs={visitorOs}
-          isPinned
         />
       </main>
       <SiteFooter />

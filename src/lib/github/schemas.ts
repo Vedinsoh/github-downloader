@@ -11,6 +11,7 @@ export const repoSchema = z.object({
     avatar_url: z.string(),
     html_url: z.string(),
   }),
+  stargazers_count: z.number(),
 })
 
 export const releaseAssetSchema = z.object({

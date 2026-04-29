@@ -84,7 +84,7 @@ export async function fetchReleases(
   page: number
 ): Promise<FetchResult<{ releases: Release[]; hasMore: boolean }>> {
   const res = await ghFetch(
-    `/repos/${owner}/${repo}/releases?per_page=30&page=${page}`,
+    `/repos/${owner}/${repo}/releases?per_page=10&page=${page}`,
     {
       revalidate: page === 1 ? 1800 : 86400,
       tags: [`repo:${owner}/${repo}`, `repo:${owner}/${repo}:p${page}`],

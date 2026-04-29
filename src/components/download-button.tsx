@@ -3,7 +3,8 @@
 import { track } from "@vercel/analytics"
 import { Download } from "lucide-react"
 import { Button } from "./ui/button"
-import { OS_LABELS, type Os } from "@/lib/classify-asset"
+import { OS_ICONS, OS_LABELS, type Os } from "@/lib/classify-asset"
+import React from 'react'
 
 type Props = {
   href: string
@@ -41,11 +42,12 @@ export function DownloadButton({
     return (
       <a href={href} onClick={onClick} className="block">
         <Button className="h-14 w-full bg-blue-600 text-base text-white hover:bg-blue-700">
-          <Download className="mr-2 size-5" />
+          {React.createElement(OS_ICONS[os], { className: "size-6" })}
           <span>
             Download for {OS_LABELS[os]}
             {architectureLabel ? ` (${architectureLabel})` : ""}
           </span>
+          <Download className="mr-2 size-5" />
         </Button>
         <span className="mt-2 block text-xs text-muted-foreground">
           {fileName} · {fileSize}

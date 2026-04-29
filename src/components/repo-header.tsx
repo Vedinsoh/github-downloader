@@ -1,8 +1,13 @@
 import Image from "next/image"
 import { Badge } from "./ui/badge"
 import type { Repo } from "@/lib/github/schemas"
+import { Button } from './ui/button'
+import { FaGithub } from 'react-icons/fa'
 
 export function RepoHeader({ repo }: { repo: Repo }) {
+  const repoUrl = repo.html_url
+  const repoOwnerUrl = repo.owner.html_url
+
   return (
     <header className="space-y-3">
       <div className="flex items-center gap-3">
@@ -16,23 +21,31 @@ export function RepoHeader({ repo }: { repo: Repo }) {
         />
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">
-            {repo.name}
+            <a href={repoUrl} target="_blank" rel="noopener noreferrer" className='hover:underline'>
+              {repo.name}
+            </a>
           </h1>
-          <p className="text-sm text-muted-foreground">by {repo.owner.login}</p>
+          <p className="text-sm text-muted-foreground">by{" "}
+            <a href={repoOwnerUrl} target="_blank" rel="noopener noreferrer" className='hover:underline'>
+              {repo.owner.login}
+            </a>
+          </p>
         </div>
-        {repo.archived ? <Badge variant="secondary">No longer maintained</Badge> : null}
+        {repo.archived ? <Badge variant="destructive">No longer maintained</Badge> : null}
+        <Button variant="ghost" size="icon">
+          <a
+            href={repoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-sm text-muted-foreground"
+          >
+            <FaGithub />
+          </a>
+        </Button>
       </div>
       {repo.description ? (
         <p className="text-base text-muted-foreground">{repo.description}</p>
       ) : null}
-      <a
-        href={repo.html_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-block text-sm text-muted-foreground hover:underline"
-      >
-        View on GitHub →
-      </a>
     </header>
   )
 }

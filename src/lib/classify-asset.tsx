@@ -1,3 +1,7 @@
+import { Box } from 'lucide-react'
+import { IconType } from 'react-icons'
+import { FaAndroid, FaApple, FaLinux, FaWindows } from 'react-icons/fa'
+
 export type Os = "windows" | "mac" | "linux" | "android" | "ios" | "unknown"
 export type Architecture = "arm64" | "x64" | "x86" | "universal" | "unknown"
 
@@ -104,6 +108,15 @@ export const OS_LABELS: Record<Os, string> = {
   unknown: "Other",
 }
 
+export const OS_ICONS: Record<Os, IconType> = {
+  windows: FaWindows,
+  mac: FaApple,
+  linux: FaLinux,
+  android: FaAndroid,
+  ios: FaApple,
+  unknown: Box,
+}
+
 export const ARCHITECTURE_LABELS: Record<Architecture, string> = {
   arm64: "ARM 64-bit",
   x64: "Intel / 64-bit",
@@ -111,3 +124,5 @@ export const ARCHITECTURE_LABELS: Record<Architecture, string> = {
   universal: "Universal",
   unknown: "",
 }
+
+export const PREFERRED_OS_ORDER: Os[] = ["windows", "mac", "linux", "android", "ios", "unknown"]

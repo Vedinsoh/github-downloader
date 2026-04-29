@@ -14,8 +14,9 @@ import {
 } from "@/components/error-states"
 import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
+import React from 'react'
 
-const MAX_PAGE = 50
+const MAX_PAGE = 100
 
 type Params = { owner: string; repo: string }
 type SearchParams = { page?: string }
@@ -124,17 +125,21 @@ export default async function RepoPage({
           <NoReleasesState ownerRepo={ownerRepo} />
         ) : (
           <>
-            <section className="space-y-6">
+            <section className="space-y-8">
               {releases.map((release, i) => (
-                <ReleaseCard
-                  key={release.id}
-                  release={release}
-                  owner={owner}
-                  repo={repo}
-                  visitorOs={visitorOs}
-                  isPinned={false}
-                  data-latest={page === 1 && i === 0 ? true : undefined}
-                />
+                <React.Fragment key={release.id}>
+                  <ReleaseCard
+                    release={release}
+                    owner={owner}
+                    repo={repo}
+                    visitorOs={visitorOs}
+                    latest={page === 1 && i === 0}
+                    data-latest={page === 1 && i === 0 ? true : undefined}
+                    />
+
+                  {/* Add a divider between releases, except after the last one */}
+                  {i === 0 && page === 1 && releases.length > 1 && <hr className="border-t border-muted-foreground/10" />}
+                </React.Fragment>
               ))}
             </section>
 

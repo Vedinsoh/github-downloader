@@ -1,11 +1,11 @@
-"use client"
-
-import { useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { FileArchive } from "lucide-react"
 import {
   ARCHITECTURE_LABELS,
+  OS_ICONS,
   OS_LABELS,
+  PREFERRED_OS_ORDER,
   type ClassifiedAsset,
+  type Os,
 } from "@/lib/classify-asset"
 import { formatBytes } from "@/lib/format"
 import type { ReleaseAsset } from "@/lib/github/schemas"
@@ -20,36 +20,45 @@ export function OtherDownloads({
   items: Item[]
   repo: string
 }) {
-  const [open, setOpen] = useState(false)
+  const groupedByOs = items.reduce<Record<Os, Item[]>>(
+    (acc, item) => {
+      acc[item.info.os].push(item)
+      return acc
+    },
+    {
+      windows: [],
+      mac: [],
+      linux: [],
+      android: [],
+      ios: [],
+      unknown: [],
+    }
+  )
 
-  const grouped = items.reduce<Record<string, Item[]>>((acc, item) => {
-    const key = OS_LABELS[item.info.os]
-    if (!acc[key]) acc[key] = []
-    acc[key].push(item)
-    return acc
-  }, {})
+  const orderedGroups = PREFERRED_OS_ORDER
+    .map((os) => ({ os, items: groupedByOs[os] }))
+    .filter((group) => group.items.length > 0)
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between text-sm font-medium hover:underline"
-      >
-        <span>Show downloads for other systems</span>
-        <ChevronDown
-          className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open ? (
-        <div className="mt-4 space-y-4">
-          {Object.entries(grouped).map(([osLabel, group]) => (
-            <div key={osLabel}>
-              <h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                {osLabel}
+    <details className="group rounded-md border bg-muted/30 p-3 text-sm">
+      <summary className="cursor-pointer list-none text-muted-foreground hover:text-foreground">
+        <span className="inline-flex items-center gap-2">
+          <FileArchive className="size-4" />
+          Downloads for other systems
+        </span>
+      </summary>
+      <div className="mt-4 space-y-4">
+        {orderedGroups.map((group) => {
+          const Icon = OS_ICONS[group.os]
+
+          return (
+            <section key={group.os}>
+              <h4 className="mb-2 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Icon aria-hidden className="size-4" />
+                <span>{OS_LABELS[group.os]}</span>
               </h4>
               <div className="space-y-2">
-                {group.map((item) => (
+                {group.items.map((item) => (
                   <DownloadButton
                     key={item.asset.id}
                     href={item.asset.browser_download_url}
@@ -62,10 +71,10 @@ export function OtherDownloads({
                   />
                 ))}
               </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
+            </section>
+          )
+        })}
+      </div>
+    </details>
   )
 }

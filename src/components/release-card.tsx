@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import {
   classifyAsset,
@@ -5,23 +7,26 @@ import {
   ARCHITECTURE_LABELS,
   type Os,
 } from "@/lib/classify-asset"
-import { formatBytes, formatDate } from "@/lib/format"
+import { formatBytes } from "@/lib/format"
 import type { Release } from "@/lib/github/schemas"
 import { Badge } from "./ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { DownloadButton } from "./download-button"
 import { OtherDownloads } from "./other-downloads"
-import { SourceCodeSection } from "./source-code-section"
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
 
 type Props = {
   release: Release
   owner: string
   repo: string
   visitorOs: Os
-  isPinned?: boolean
+  latest?: boolean
 }
 
-export function ReleaseCard({ release, owner, repo, visitorOs, isPinned }: Props) {
+export function ReleaseCard({ release, owner, repo, visitorOs, latest }: Props) {
   const enriched = release.assets
     .map((a) => ({ asset: a, info: classifyAsset(a.name) }))
     .filter((e) => !e.info.isSkippable)
@@ -31,25 +36,31 @@ export function ReleaseCard({ release, owner, repo, visitorOs, isPinned }: Props
   const primary = matching[0] ?? null
 
   const versionLabel = release.tag_name
+  const releaseLink = `/${owner}/${repo}/v/${encodeURIComponent(release.tag_name)}`
 
   return (
-    <Card>
+    <Card className={latest ? "ring-green-500" : ""}>
       <CardHeader className="flex flex-row flex-wrap items-center gap-2">
-        <CardTitle className="flex-1 text-xl">Version {versionLabel}</CardTitle>
-        {release.prerelease ? <Badge variant="secondary">Beta</Badge> : null}
-        {!isPinned ? (
-          <Link
-            href={`/${owner}/${repo}/v/${encodeURIComponent(release.tag_name)}`}
-            className="text-xs text-muted-foreground hover:underline"
-          >
-            Copy share link
-          </Link>
-        ) : null}
-        {release.published_at ? (
-          <span className="w-full text-xs text-muted-foreground">
-            Published {formatDate(release.published_at)}
-          </span>
-        ) : null}
+        <div className='flex flex-1 items-center gap-2'>
+          <CardTitle className="text-xl">
+            <Link href={releaseLink} className="hover:underline">
+              Version {versionLabel}
+            </Link>
+          </CardTitle>
+          {release.prerelease ? <Badge variant="destructive">Beta</Badge> : null}
+          {latest ? (
+            <Badge variant="success">
+              Latest
+            </Badge>
+          ) : null}
+        </div>
+        <div>
+          {release.published_at ? (
+            <span className="w-full text-xs text-muted-foreground">
+              Published {dayjs(release.published_at).fromNow()}
+            </span>
+          ) : null}
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -71,21 +82,13 @@ export function ReleaseCard({ release, owner, repo, visitorOs, isPinned }: Props
           </p>
         ) : (
           <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-            This version is provided as source code only — you may need a
-            developer to use it.
+            No downloads available
           </p>
         )}
 
         {other.length > 0 ? (
           <OtherDownloads items={other} repo={`${owner}/${repo}`} />
         ) : null}
-
-        <SourceCodeSection
-          tarball={release.tarball_url}
-          zipball={release.zipball_url}
-          tag={release.tag_name}
-          repo={`${owner}/${repo}`}
-        />
       </CardContent>
     </Card>
   )
