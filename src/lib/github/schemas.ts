@@ -11,7 +11,6 @@ export const repoSchema = z.object({
     avatar_url: z.string(),
     html_url: z.string(),
   }),
-  stargazers_count: z.number(),
 })
 
 export const releaseAssetSchema = z.object({
@@ -31,8 +30,6 @@ export const releaseSchema = z.object({
   prerelease: z.boolean(),
   published_at: z.string().nullable(),
   html_url: z.string(),
-  tarball_url: z.string().nullable(),
-  zipball_url: z.string().nullable(),
   assets: z.array(releaseAssetSchema),
 })
 

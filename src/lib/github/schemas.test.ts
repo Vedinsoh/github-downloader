@@ -45,8 +45,6 @@ describe("releaseSchema", () => {
       prerelease: false,
       published_at: "2025-01-01T00:00:00Z",
       html_url: "https://github.com/redis/redis/releases/tag/v8.0.1",
-      tarball_url: "https://api.github.com/x",
-      zipball_url: "https://api.github.com/y",
       assets: [
         {
           id: 1,
@@ -69,8 +67,6 @@ describe("releaseSchema", () => {
       prerelease: false,
       published_at: null,
       html_url: "https://github.com/x/y",
-      tarball_url: null,
-      zipball_url: null,
       assets: [],
     })
     expect(result.success).toBe(true)
