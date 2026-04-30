@@ -1,7 +1,6 @@
 import { FileArchive } from "lucide-react"
 import {
   ARCHITECTURE_LABELS,
-  OS_ICONS,
   OS_LABELS,
   PREFERRED_OS_ORDER,
   type ClassifiedAsset,
@@ -49,12 +48,10 @@ export function OtherDownloads({
       </summary>
       <div className="mt-4 space-y-4">
         {orderedGroups.map((group) => {
-          const Icon = OS_ICONS[group.os]
 
           return (
             <section key={group.os}>
               <h4 className="mb-2 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <Icon aria-hidden className="size-4" />
                 <span>{OS_LABELS[group.os]}</span>
               </h4>
               <div className="space-y-2">

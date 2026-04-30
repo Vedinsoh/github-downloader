@@ -50,7 +50,7 @@ export function DownloadButton({
             Download for {OS_LABELS[os]}
             {architectureLabel ? ` (${architectureLabel})` : ""}
           </span>
-          <Download className="mr-2 size-5" />
+          <Download className="size-5" />
         </Button>
         <span className="mt-2 block text-xs text-muted-foreground">
           {fileName} · {fileSize}
@@ -62,9 +62,10 @@ export function DownloadButton({
   return (
     <a href={href} onClick={onClick} className="block">
       <Button variant="secondary" className="h-12 w-full justify-start">
-        <Download className="mr-2 size-4" />
+        {React.createElement(OS_ICONS[os], { className: "size-4" })}
         <span className="flex-1 truncate text-left">{fileName}</span>
         <span className="text-xs text-muted-foreground">{fileSize}</span>
+        <Download className="size-4" />
       </Button>
     </a>
   )
