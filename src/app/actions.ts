@@ -12,5 +12,8 @@ export async function submitRepoLink(
   const raw = String(formData.get("link") ?? "")
   const result = parseRepoInput(raw)
   if (!result.ok) return { error: result.error }
-  redirect(`/${result.owner}/${result.repo}`)
+  const target = result.version
+    ? `/${result.owner}/${result.repo}/v/${encodeURIComponent(result.version)}`
+    : `/${result.owner}/${result.repo}`
+  redirect(target)
 }

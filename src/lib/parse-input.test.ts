@@ -5,6 +5,19 @@ describe("parseRepoInput", () => {
   const ok = (input: string, owner: string, repo: string) =>
     expect(parseRepoInput(input)).toEqual({ ok: true, owner, repo })
 
+  const okVersion = (
+    input: string,
+    owner: string,
+    repo: string,
+    version: string
+  ) =>
+    expect(parseRepoInput(input)).toEqual({
+      ok: true,
+      owner,
+      repo,
+      version,
+    })
+
   const fail = (input: string) =>
     expect(parseRepoInput(input).ok).toBe(false)
 
@@ -15,8 +28,24 @@ describe("parseRepoInput", () => {
     ok("https://github.com/redis/redis", "redis", "redis"))
   it("accepts /releases suffix", () =>
     ok("https://github.com/redis/redis/releases", "redis", "redis"))
-  it("accepts /releases/tag suffix", () =>
-    ok("https://github.com/redis/redis/releases/tag/v8.0.1", "redis", "redis"))
+  it("accepts /releases/tag suffix and extracts version", () =>
+    okVersion(
+      "https://github.com/redis/redis/releases/tag/v8.0.1",
+      "redis",
+      "redis",
+      "v8.0.1"
+    ))
+  it("accepts /releases/download suffix and extracts version", () =>
+    okVersion(
+      "https://github.com/redis/redis/releases/download/v8.0.1/redis.zip",
+      "redis",
+      "redis",
+      "v8.0.1"
+    ))
+  it("accepts /releases/latest with no version", () =>
+    ok("https://github.com/redis/redis/releases/latest", "redis", "redis"))
+  it("accepts /issues suffix with no version", () =>
+    ok("https://github.com/redis/redis/issues", "redis", "redis"))
   it("accepts .git suffix", () =>
     ok("https://github.com/redis/redis.git", "redis", "redis"))
   it("accepts trailing slash", () => ok("redis/redis/", "redis", "redis"))

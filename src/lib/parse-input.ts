@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { classifyRest } from "./classify-rest"
 
 const ownerRegex = /^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/
 const repoRegex = /^[a-zA-Z0-9._-]{1,100}$/
@@ -34,7 +35,7 @@ export const versionSchema = z
   .refine((v) => !/[\x00-\x1f\x7f]/.test(v), { message: "Invalid characters" })
 
 export type ParseResult =
-  | { ok: true; owner: string; repo: string }
+  | { ok: true; owner: string; repo: string; version?: string }
   | { ok: false; error: string }
 
 export function parseRepoInput(raw: string): ParseResult {
@@ -65,5 +66,6 @@ export function parseRepoInput(raw: string): ParseResult {
     return { ok: false, error: "That doesn't look like a GitHub repository." }
   }
 
-  return { ok: true, owner, repo }
+  const { version } = classifyRest(parts.slice(2))
+  return version ? { ok: true, owner, repo, version } : { ok: true, owner, repo }
 }
