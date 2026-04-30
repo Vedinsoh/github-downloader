@@ -1,3 +1,4 @@
+import { links } from '@/lib/constants/links'
 import type { MetadataRoute } from "next"
 
 export default function robots(): MetadataRoute.Robots {
@@ -9,6 +10,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/", "/og", "/*?page=", "/*/v/"],
       },
     ],
-    host: "https://githubdl.com",
+    host: links.app.url,
   }
 }

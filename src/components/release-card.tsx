@@ -1,18 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import {
-  classifyAsset,
-  OS_LABELS,
-  ARCHITECTURE_LABELS,
-  type Os,
-} from "@/lib/classify-asset"
-import { formatBytes } from "@/lib/format"
+import { type Os } from "@/lib/classify-asset"
 import type { Release } from "@/lib/github/schemas"
 import { Badge } from "./ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
-import { DownloadButton } from "./download-button"
-import { OtherDownloads } from "./other-downloads"
+import { ReleaseAssets } from "./release-assets"
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -27,14 +20,6 @@ type Props = {
 }
 
 export function ReleaseCard({ release, owner, repo, visitorOs, latest }: Props) {
-  const assets = release.assets
-    .map((a) => ({ asset: a, info: classifyAsset(a.name) }))
-    .filter((e) => !e.info.isSkippable)
-
-  const matchingAssets = assets.filter((e) => e.info.os === visitorOs)
-  const otherAssets = assets.filter((e) => e.info.os !== visitorOs)
-  const primary = matchingAssets[0] ?? null
-
   const versionLabel = release.tag_name
   const releaseLink = `/${owner}/${repo}/v/${encodeURIComponent(release.tag_name)}`
 
@@ -69,32 +54,12 @@ export function ReleaseCard({ release, owner, repo, visitorOs, latest }: Props) 
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
-        {primary ? (
-          <DownloadButton
-            href={primary.asset.browser_download_url}
-            os={primary.info.os}
-            architectureLabel={ARCHITECTURE_LABELS[primary.info.architecture]}
-            fileName={primary.asset.name}
-            fileSize={formatBytes(primary.asset.size)}
-            assetName={primary.asset.name}
-            repo={`${owner}/${repo}`}
-            primary
-          />
-        ) : assets.length > 0 ? (
-          <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-            No download for {OS_LABELS[visitorOs]} in this version. See other
-            systems below.
-          </p>
-        ) : (
-          <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-            No downloads available
-          </p>
-        )}
-
-        {otherAssets.length > 0 ? (
-          <OtherDownloads items={otherAssets} repo={`${owner}/${repo}`} />
-        ) : null}
+      <CardContent>
+        <ReleaseAssets
+          assets={release.assets}
+          visitorOs={visitorOs}
+          repo={`${owner}/${repo}`}
+        />
       </CardContent>
     </Card>
   )

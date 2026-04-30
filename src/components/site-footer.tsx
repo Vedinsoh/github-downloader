@@ -1,3 +1,4 @@
+import { links } from '@/lib/constants/links'
 import Link from "next/link"
 
 export function SiteFooter() {
@@ -17,7 +18,7 @@ export function SiteFooter() {
           Terms
         </Link>
         <span aria-hidden>·</span>
-        <a href="mailto:info@githubdl.com?subject=DMCA%20Complaint" className="hover:underline">
+        <a href={`mailto:${links.app.email}?subject=DMCA%20Complaint`} className="hover:underline">
           DMCA
         </a>
       </p>

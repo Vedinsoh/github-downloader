@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css"
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { links } from '@/lib/constants/links'
 
 const inter = Inter({
   variable: "--font-sans",
@@ -11,15 +12,15 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://githubdl.com"),
+  metadataBase: new URL(links.app.url),
   title: {
-    default: "githubdl — Get the program. Skip the GitHub maze.",
-    template: "%s — githubdl",
+    default: `${links.app.name} — The easiest way to download GitHub files`,
+    template: `%s — ${links.app.name}`,
   },
   description:
     "Download programs from GitHub the easy way. Paste any repository link.",
   openGraph: {
-    siteName: "githubdl",
+    siteName: links.app.name,
     type: "website",
   },
   twitter: { card: "summary_large_image" },

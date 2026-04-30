@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
 import { SiteFooter } from "@/components/site-footer"
+import { links } from '@/lib/constants/links'
 
 export const metadata: Metadata = {
   title: "Terms",
-  alternates: { canonical: "https://githubdl.com/terms" },
+  alternates: { canonical: `${links.app.url}/terms` },
 }
 
 export default function TermsPage() {
@@ -43,7 +44,7 @@ export default function TermsPage() {
         <h2>Takedowns</h2>
         <p>
           To report content, email{" "}
-          <a href="mailto:info@githubdl.com">info@githubdl.com</a>. Since we
+          <a href={`mailto:${links.app.email}`}>{links.app.email}</a>. Since we
           don&rsquo;t host files, takedowns are usually best directed at GitHub
           directly.
         </p>

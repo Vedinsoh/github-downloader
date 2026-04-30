@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
 import { SiteFooter } from "@/components/site-footer"
+import { links } from '@/lib/constants/links'
 
 export const metadata: Metadata = {
   title: "About",
-  alternates: { canonical: "https://githubdl.com/about" },
+  alternates: { canonical: `${links.app.url}/about` },
 }
 
 export default function AboutPage() {
@@ -22,7 +23,7 @@ export default function AboutPage() {
         </p>
         <p>
           If you have a question or need to report something, email{" "}
-          <a href="mailto:info@githubdl.com">info@githubdl.com</a>.
+          <a href={`mailto:${links.app.email}`}>{links.app.email}</a>.
         </p>
       </main>
       <SiteFooter />

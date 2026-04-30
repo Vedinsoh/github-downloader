@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
 import { SiteFooter } from "@/components/site-footer"
+import { links } from '@/lib/constants/links'
 
 export const metadata: Metadata = {
   title: "Privacy",
-  alternates: { canonical: "https://githubdl.com/privacy" },
+  alternates: { canonical: `${links.app.url}/privacy` },
 }
 
 export default function PrivacyPage() {
@@ -42,7 +43,7 @@ export default function PrivacyPage() {
         <p>
           Since we don&rsquo;t store personal data, there&rsquo;s nothing to
           delete on request. If you have questions, email{" "}
-          <a href="mailto:info@githubdl.com">info@githubdl.com</a>.
+          <a href={`mailto:${links.app.email}`}>{links.app.email}</a>.
         </p>
       </main>
       <SiteFooter />

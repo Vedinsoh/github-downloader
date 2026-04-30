@@ -9,7 +9,7 @@ Domain: `githubdl.com`. Routes: `githubdl.com/{owner}/{repo}` → releases; `…
 ## Stack
 
 - Next.js 16 (App Router) + React 19 + TypeScript
-- Tailwind v4 + shadcn/ui (Button, Card, Badge, Input, Skeleton)
+- Tailwind v4 + shadcn/ui
 - Zod 4 — input parsing, route segment validation, GitHub API response shape
 - pnpm
 - Vercel Pro hosting (Node runtime for pages, Edge for `/og` and proxy)

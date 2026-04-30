@@ -16,6 +16,8 @@ import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
 import React from 'react'
 import { BetaToggle } from '@/components/beta-toggle'
+import { Navbar } from '@/components/navbar'
+import { links } from '@/lib/constants/links'
 
 const MAX_PAGE = 100
 
@@ -32,7 +34,7 @@ export async function generateMetadata({
     return { title: "Not found" }
   }
   const r = await fetchRepo(owner, repo)
-  const canonical = `https://githubdl.com/${owner}/${repo}`
+  const canonical = `${links.app.url}/${owner}/${repo}`
   if (!r.ok) {
     return {
       title: `${owner}/${repo}`,
@@ -113,13 +115,17 @@ export default async function RepoPage({
           operatingSystem: "Windows, macOS, Linux",
           softwareVersion: releases[0].tag_name,
           downloadUrl: releases[0].assets[0].browser_download_url,
-          url: `https://githubdl.com/${ownerRepo}`,
+          url: `${links.app.url}/${ownerRepo}`,
         }
       : null
 
   return (
     <>
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
+      <div className="fixed inset-0">
+        <Navbar />
+      </div>
+
         <RepoHeader repo={repoResult.data} />
 
         <BetaToggle />

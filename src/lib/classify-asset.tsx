@@ -1,6 +1,7 @@
 import { Box } from 'lucide-react'
 import { IconType } from 'react-icons'
 import { FaAndroid, FaApple, FaLinux, FaWindows } from 'react-icons/fa'
+import type { ReleaseAsset } from "./github/schemas"
 
 export type Os = "windows" | "mac" | "linux" | "android" | "ios" | "unknown"
 export type Architecture = "arm64" | "x64" | "x86" | "universal" | "unknown"
@@ -9,6 +10,58 @@ export type ClassifiedAsset = {
   os: Os
   architecture: Architecture
   isSkippable: boolean
+}
+
+export type ReleaseItem = { asset: ReleaseAsset; info: ClassifiedAsset }
+
+export type ClassifiedRelease =
+  | { mode: "empty" }
+  | { mode: "archive-primary"; archives: ReleaseItem[] }
+  | { mode: "os-build"; primary: ReleaseItem | null; others: ReleaseItem[] }
+
+const ARCHIVE_EXTENSIONS = [
+  ".tar.gz",
+  ".tar.xz",
+  ".tar.bz2",
+  ".tgz",
+  ".zip",
+  ".rar",
+  ".7z",
+  ".tar",
+]
+
+function isArchive(name: string): boolean {
+  return ARCHIVE_EXTENSIONS.some((ext) => name.endsWith(ext))
+}
+
+export function classifyRelease(
+  assets: ReleaseAsset[],
+  visitorOs: Os
+): ClassifiedRelease {
+  const items: ReleaseItem[] = assets
+    .map((asset) => ({ asset, info: classifyAsset(asset.name) }))
+    .filter((e) => !e.info.isSkippable)
+
+  if (items.length === 0) {
+    return { mode: "empty" }
+  }
+
+  const archivePrimary = items.every(
+    (e) => e.info.os === "unknown" && isArchive(e.asset.name.toLowerCase())
+  )
+
+  if (archivePrimary) {
+    return { mode: "archive-primary", archives: items }
+  }
+
+  const matching = items.filter((e) => e.info.os === visitorOs)
+  const others = items.filter((e) => e.info.os !== visitorOs)
+
+  return {
+    mode: "os-build",
+    primary: matching[0] ?? null,
+    others,
+  }
 }
 
 const SKIP_EXTENSIONS = [

@@ -6,6 +6,7 @@ import {
   type Release,
   type Repo,
 } from "./schemas"
+import { links } from '../constants/links';
 
 const GITHUB_API = "https://api.github.com"
 
@@ -28,7 +29,7 @@ async function ghFetch(
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
-    "User-Agent": "githubdl.com",
+    "User-Agent": links.app.hostname,
   }
   if (token) headers.Authorization = `Bearer ${token}`
 

@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og"
 import { ownerSchema, repoSchema } from "@/lib/parse-input"
 import { fetchRepo } from "@/lib/github/client"
+import { links } from '@/lib/constants/links'
 
 export const runtime = "edge"
 
@@ -73,7 +74,7 @@ export async function GET(req: Request) {
           }}
         >
           <div style={{ fontSize: 28, fontWeight: 600, color: "#2563eb" }}>
-            githubdl.com
+            {links.app.hostname}
           </div>
           <div style={{ fontSize: 22, color: "#666" }}>Get the program.</div>
         </div>

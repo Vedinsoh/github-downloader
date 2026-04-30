@@ -16,6 +16,7 @@ type Props = {
   repo: string
   primary?: boolean
   isSource?: boolean
+  mode?: "archive-primary" | "os-build"
 }
 
 export function DownloadButton({
@@ -28,6 +29,7 @@ export function DownloadButton({
   repo,
   primary,
   isSource,
+  mode,
 }: Props) {
   function onClick() {
     track("download_click", {
@@ -35,6 +37,7 @@ export function DownloadButton({
       asset_name: assetName,
       os,
       is_source: Boolean(isSource),
+      mode: mode ?? "os-build",
     })
   }
 

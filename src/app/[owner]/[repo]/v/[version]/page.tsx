@@ -16,6 +16,7 @@ import {
   VersionNotFoundState,
 } from "@/components/error-states"
 import { SiteFooter } from "@/components/site-footer"
+import { links } from '@/lib/constants/links'
 
 type Params = { owner: string; repo: string; version: string }
 
@@ -28,7 +29,7 @@ export async function generateMetadata({
   const tag = decodeVersion(version)
   return {
     title: `${owner}/${repo}${tag ? ` · ${tag}` : ""}`,
-    alternates: { canonical: `https://githubdl.com/${owner}/${repo}/v/${version}` },
+    alternates: { canonical: `${links.app.url}/${owner}/${repo}/v/${version}` },
     robots: { index: false },
   }
 }
