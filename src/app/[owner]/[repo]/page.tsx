@@ -121,11 +121,8 @@ export default async function RepoPage({
 
   return (
     <>
+      <Navbar />
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
-      <div className="fixed inset-0">
-        <Navbar />
-      </div>
-
         <RepoHeader repo={repoResult.data} />
 
         <BetaToggle />
