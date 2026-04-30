@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { classifyAsset } from "./classify-asset"
+import {
+  classifyAsset,
+  classifyRelease,
+  getOtherDownloadsOrder,
+  getPreferredOsOrder,
+} from "./classify-asset"
+import type { ReleaseAsset } from "./github/schemas"
 
 describe("classifyAsset", () => {
   it("classifies .exe as Windows", () => {
@@ -96,5 +102,148 @@ describe("classifyAsset", () => {
       os: "windows",
       architecture: "x86",
     })
+  })
+
+  it("flags CLI segment as cli", () => {
+    expect(classifyAsset("MyTool.Cli.win-arm64.zip").isCli).toBe(true)
+    expect(classifyAsset("mytool-cli-1.2.0.exe").isCli).toBe(true)
+    expect(classifyAsset("tool_cli_linux.tar.gz").isCli).toBe(true)
+  })
+
+  it("does not flag substring 'cli' as cli", () => {
+    expect(classifyAsset("cliquey.exe").isCli).toBe(false)
+    expect(classifyAsset("oraclient-1.0.zip").isCli).toBe(false)
+    expect(classifyAsset("metaclick.dmg").isCli).toBe(false)
+  })
+})
+
+function makeAsset(name: string, id = Math.floor(Math.random() * 1e9)): ReleaseAsset {
+  return {
+    id,
+    name,
+    size: 1024,
+    download_count: 0,
+    browser_download_url: `https://example.test/${name}`,
+  }
+}
+
+describe("classifyRelease — same-OS sibling ranking", () => {
+  it("picks arm64 as primary on Mac, x64 becomes sibling", () => {
+    const result = classifyRelease(
+      [makeAsset("App-mac-x64.dmg", 1), makeAsset("App-mac-arm64.dmg", 2)],
+      "mac"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(2)
+    expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([1])
+    expect(result.others).toEqual([])
+  })
+
+  it("picks x64 as primary on Windows, arm64 becomes sibling", () => {
+    const result = classifyRelease(
+      [makeAsset("App-win-arm64.exe", 1), makeAsset("App-win-x64.exe", 2)],
+      "windows"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(2)
+    expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([1])
+  })
+
+  it("caps siblings at 3, overflow goes to others", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("App-mac-arm64.dmg", 1),
+        makeAsset("App-mac-universal.dmg", 2),
+        makeAsset("App-mac-x64.dmg", 3),
+        makeAsset("App-mac-x86.dmg", 4),
+        makeAsset("App-mac-other.dmg", 5),
+      ],
+      "mac"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(1)
+    expect(result.sameOsSiblings).toHaveLength(3)
+    expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([2, 3, 4])
+    expect(result.others.map((o) => o.asset.id)).toEqual([5])
+  })
+
+  it("unknown-arch same-OS items become siblings, ranked last", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("App-mac-arm64.dmg", 1),
+        makeAsset("App-mac.dmg", 2),
+      ],
+      "mac"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(1)
+    expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([2])
+  })
+})
+
+describe("classifyRelease — CLI exclusion", () => {
+  it("drops CLI when GUI sibling exists at same OS+arch", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("App.win-x64.exe", 1),
+        makeAsset("App.Cli.win-x64.zip", 2),
+      ],
+      "windows"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(1)
+    expect(result.sameOsSiblings).toEqual([])
+    expect(result.others).toEqual([])
+  })
+
+  it("keeps CLI when no GUI at same OS+arch", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("App.win-x64.exe", 1),
+        makeAsset("App.Cli.win-arm64.zip", 2),
+      ],
+      "windows"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(1)
+    expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([2])
+  })
+
+  it("all-CLI release: bypass exclusion, keep all", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("tool-cli-x64.exe", 1),
+        makeAsset("tool-cli-arm64.exe", 2),
+      ],
+      "windows"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(1)
+    expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([2])
+  })
+})
+
+describe("getPreferredOsOrder", () => {
+  it("desktop puts Windows first", () => {
+    expect(getPreferredOsOrder("desktop")[0]).toBe("windows")
+  })
+
+  it("mobile puts Android first, then iOS", () => {
+    const order = getPreferredOsOrder("mobile")
+    expect(order[0]).toBe("android")
+    expect(order[1]).toBe("ios")
+  })
+})
+
+describe("getOtherDownloadsOrder", () => {
+  it("pins visitor OS first regardless of device class", () => {
+    const order = getOtherDownloadsOrder("desktop", "linux")
+    expect(order[0]).toBe("linux")
+  })
+
+  it("falls back to base order when visitor OS is unknown", () => {
+    expect(getOtherDownloadsOrder("desktop", "unknown")).toEqual(
+      getPreferredOsOrder("desktop")
+    )
   })
 })

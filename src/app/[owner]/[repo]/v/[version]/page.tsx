@@ -7,7 +7,7 @@ import {
   versionSchema,
 } from "@/lib/parse-input"
 import { fetchRepo, fetchReleaseByTag } from "@/lib/github/client"
-import { detectOsFromUserAgent } from "@/lib/detect-os"
+import { detectDeviceClassFromUserAgent, detectOsFromUserAgent } from "@/lib/detect-os"
 import { ReleaseCard } from "@/components/release-card"
 import { RepoHeader } from "@/components/repo-header"
 import {
@@ -77,6 +77,7 @@ export default async function VersionPage({
 
   const ua = (await headers()).get("user-agent")
   const visitorOs = detectOsFromUserAgent(ua)
+  const deviceClass = detectDeviceClassFromUserAgent(ua)
 
   return (
     <>
@@ -87,6 +88,7 @@ export default async function VersionPage({
           owner={owner}
           repo={repo}
           visitorOs={visitorOs}
+          deviceClass={deviceClass}
         />
       </main>
       <SiteFooter />

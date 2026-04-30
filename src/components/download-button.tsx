@@ -15,6 +15,7 @@ type Props = {
   assetName: string
   repo: string
   primary?: boolean
+  sibling?: boolean
   isSource?: boolean
   mode?: "archive-primary" | "os-build"
 }
@@ -28,6 +29,7 @@ export function DownloadButton({
   assetName,
   repo,
   primary,
+  sibling,
   isSource,
   mode,
 }: Props) {
@@ -55,6 +57,25 @@ export function DownloadButton({
         <span className="mt-2 block text-xs text-muted-foreground">
           {fileName} · {fileSize}
         </span>
+      </a>
+    )
+  }
+
+  if (sibling) {
+    const label = architectureLabel || "Other build"
+    return (
+      <a href={href} onClick={onClick} className="inline-block">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 gap-2 rounded-full px-3 text-xs"
+          title={`${fileName} · ${fileSize}`}
+        >
+          {React.createElement(OS_ICONS[os], { className: "size-3.5" })}
+          <span>{label}</span>
+          <span className="text-muted-foreground">· {fileSize}</span>
+          <Download className="size-3.5" />
+        </Button>
       </a>
     )
   }

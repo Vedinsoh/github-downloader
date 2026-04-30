@@ -4,7 +4,7 @@ import Link from "next/link"
 import { redirect, notFound } from "next/navigation"
 import { ownerSchema, repoSchema } from "@/lib/parse-input"
 import { fetchRepo, fetchReleases } from "@/lib/github/client"
-import { detectOsFromUserAgent } from "@/lib/detect-os"
+import { detectDeviceClassFromUserAgent, detectOsFromUserAgent } from "@/lib/detect-os"
 import { ReleaseCard } from "@/components/release-card"
 import { RepoHeader } from "@/components/repo-header"
 import {
@@ -102,6 +102,7 @@ export default async function RepoPage({
 
   const ua = (await headers()).get("user-agent")
   const visitorOs = detectOsFromUserAgent(ua)
+  const deviceClass = detectDeviceClassFromUserAgent(ua)
   const { releases, hasMore } = releasesResult.data
 
   const ownerRepo = `${owner}/${repo}`
@@ -139,6 +140,7 @@ export default async function RepoPage({
                     owner={owner}
                     repo={repo}
                     visitorOs={visitorOs}
+                    deviceClass={deviceClass}
                     latest={page === 1 && i === 0}
                     data-latest={page === 1 && i === 0 ? true : undefined}
                     />

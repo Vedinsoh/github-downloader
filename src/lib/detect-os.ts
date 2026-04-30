@@ -1,5 +1,5 @@
 import { UAParser } from "ua-parser-js"
-import type { Os } from "./classify-asset"
+import type { DeviceClass, Os } from "./classify-asset"
 
 export function detectOsFromUserAgent(ua: string | null | undefined): Os {
   if (!ua) return "unknown"
@@ -21,4 +21,12 @@ export function detectOsFromUserAgent(ua: string | null | undefined): Os {
     return "linux"
   }
   return "unknown"
+}
+
+export function detectDeviceClassFromUserAgent(
+  ua: string | null | undefined
+): DeviceClass {
+  if (!ua) return "desktop"
+  const parsed = new UAParser(ua).getDevice()
+  return parsed.type === "mobile" ? "mobile" : "desktop"
 }

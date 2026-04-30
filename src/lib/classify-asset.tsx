@@ -5,11 +5,13 @@ import type { ReleaseAsset } from "./github/schemas"
 
 export type Os = "windows" | "mac" | "linux" | "android" | "ios" | "unknown"
 export type Architecture = "arm64" | "x64" | "x86" | "universal" | "unknown"
+export type DeviceClass = "desktop" | "mobile"
 
 export type ClassifiedAsset = {
   os: Os
   architecture: Architecture
   isSkippable: boolean
+  isCli: boolean
 }
 
 export type ReleaseItem = { asset: ReleaseAsset; info: ClassifiedAsset }
@@ -17,7 +19,14 @@ export type ReleaseItem = { asset: ReleaseAsset; info: ClassifiedAsset }
 export type ClassifiedRelease =
   | { mode: "empty" }
   | { mode: "archive-primary"; archives: ReleaseItem[] }
-  | { mode: "os-build"; primary: ReleaseItem | null; others: ReleaseItem[] }
+  | {
+      mode: "os-build"
+      primary: ReleaseItem | null
+      sameOsSiblings: ReleaseItem[]
+      others: ReleaseItem[]
+    }
+
+const SIBLING_CHIP_LIMIT = 3
 
 const ARCHIVE_EXTENSIONS = [
   ".tar.gz",
@@ -34,13 +43,34 @@ function isArchive(name: string): boolean {
   return ARCHIVE_EXTENSIONS.some((ext) => name.endsWith(ext))
 }
 
+const ARCH_RANK: Record<Os, Architecture[]> = {
+  mac: ["arm64", "universal", "x64", "x86", "unknown"],
+  windows: ["x64", "arm64", "x86", "universal", "unknown"],
+  linux: ["x64", "arm64", "x86", "universal", "unknown"],
+  android: ["arm64", "x64", "x86", "universal", "unknown"],
+  ios: ["arm64", "universal", "x64", "x86", "unknown"],
+  unknown: ["universal", "x64", "arm64", "x86", "unknown"],
+}
+
+function archRank(os: Os, arch: Architecture): number {
+  const rank = ARCH_RANK[os].indexOf(arch)
+  return rank === -1 ? ARCH_RANK[os].length : rank
+}
+
+function sortByArchPopularity(os: Os) {
+  return (a: ReleaseItem, b: ReleaseItem) =>
+    archRank(os, a.info.architecture) - archRank(os, b.info.architecture)
+}
+
 export function classifyRelease(
   assets: ReleaseAsset[],
   visitorOs: Os
 ): ClassifiedRelease {
-  const items: ReleaseItem[] = assets
+  const all: ReleaseItem[] = assets
     .map((asset) => ({ asset, info: classifyAsset(asset.name) }))
     .filter((e) => !e.info.isSkippable)
+
+  const items = applyCliExclusion(all)
 
   if (items.length === 0) {
     return { mode: "empty" }
@@ -54,14 +84,42 @@ export function classifyRelease(
     return { mode: "archive-primary", archives: items }
   }
 
-  const matching = items.filter((e) => e.info.os === visitorOs)
-  const others = items.filter((e) => e.info.os !== visitorOs)
+  const sameOsAll = items
+    .filter((e) => e.info.os === visitorOs)
+    .sort(sortByArchPopularity(visitorOs))
+
+  const otherOs = items.filter((e) => e.info.os !== visitorOs)
+
+  const primary = sameOsAll[0] ?? null
+  const sameOsRest = primary ? sameOsAll.slice(1) : []
+
+  const sameOsSiblings = sameOsRest.slice(0, SIBLING_CHIP_LIMIT)
+  const sameOsOverflow = sameOsRest.slice(SIBLING_CHIP_LIMIT)
+
+  const others = [...sameOsOverflow, ...otherOs]
 
   return {
     mode: "os-build",
-    primary: matching[0] ?? null,
+    primary,
+    sameOsSiblings,
     others,
   }
+}
+
+function applyCliExclusion(items: ReleaseItem[]): ReleaseItem[] {
+  const hasNonCli = items.some((e) => !e.info.isCli)
+  if (!hasNonCli) return items
+
+  return items.filter((e) => {
+    if (!e.info.isCli) return true
+    const hasGuiSibling = items.some(
+      (s) =>
+        !s.info.isCli &&
+        s.info.os === e.info.os &&
+        s.info.architecture === e.info.architecture
+    )
+    return !hasGuiSibling
+  })
 }
 
 const SKIP_EXTENSIONS = [
@@ -83,20 +141,23 @@ const SKIP_NAME_PATTERNS = [
   /signatures?/i,
 ]
 
+const CLI_PATTERN = /(?:^|[-_./])cli(?:[-_./0-9]|$)/i
+
 export function classifyAsset(filename: string): ClassifiedAsset {
   const name = filename.toLowerCase()
 
   if (SKIP_EXTENSIONS.some((ext) => name.endsWith(ext))) {
-    return { os: "unknown", architecture: "unknown", isSkippable: true }
+    return { os: "unknown", architecture: "unknown", isSkippable: true, isCli: false }
   }
   if (SKIP_NAME_PATTERNS.some((re) => re.test(name))) {
-    return { os: "unknown", architecture: "unknown", isSkippable: true }
+    return { os: "unknown", architecture: "unknown", isSkippable: true, isCli: false }
   }
 
   const architecture = detectArchitecture(name)
   const os = detectOs(name)
+  const isCli = CLI_PATTERN.test(name)
 
-  return { os, architecture, isSkippable: false }
+  return { os, architecture, isSkippable: false, isCli }
 }
 
 function detectOs(name: string): Os {
@@ -178,4 +239,22 @@ export const ARCHITECTURE_LABELS: Record<Architecture, string> = {
   unknown: "",
 }
 
-export const PREFERRED_OS_ORDER: Os[] = ["windows", "mac", "linux", "android", "ios", "unknown"]
+const DESKTOP_OS_ORDER: Os[] = ["windows", "mac", "linux", "android", "ios", "unknown"]
+const MOBILE_OS_ORDER: Os[] = ["android", "ios", "windows", "mac", "linux", "unknown"]
+
+export function getPreferredOsOrder(deviceClass: DeviceClass): Os[] {
+  return deviceClass === "mobile" ? MOBILE_OS_ORDER : DESKTOP_OS_ORDER
+}
+
+export function getOtherDownloadsOrder(
+  deviceClass: DeviceClass,
+  visitorOs: Os
+): Os[] {
+  const base = getPreferredOsOrder(deviceClass)
+  if (visitorOs === "unknown") return base
+  return [visitorOs, ...base.filter((os) => os !== visitorOs)]
+}
+
+export function sortItemsByArch(items: ReleaseItem[], os: Os): ReleaseItem[] {
+  return [...items].sort(sortByArchPopularity(os))
+}

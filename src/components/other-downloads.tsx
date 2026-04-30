@@ -1,9 +1,11 @@
 import { FileArchive } from "lucide-react"
 import {
   ARCHITECTURE_LABELS,
+  getOtherDownloadsOrder,
   OS_LABELS,
-  PREFERRED_OS_ORDER,
+  sortItemsByArch,
   type ClassifiedAsset,
+  type DeviceClass,
   type Os,
 } from "@/lib/classify-asset"
 import { formatBytes } from "@/lib/format"
@@ -15,9 +17,13 @@ type Item = { asset: ReleaseAsset; info: ClassifiedAsset }
 export function OtherDownloads({
   items,
   repo,
+  deviceClass,
+  visitorOs,
 }: {
   items: Item[]
   repo: string
+  deviceClass: DeviceClass
+  visitorOs: Os
 }) {
   const groupedByOs = items.reduce<Record<Os, Item[]>>(
     (acc, item) => {
@@ -34,8 +40,9 @@ export function OtherDownloads({
     }
   )
 
-  const orderedGroups = PREFERRED_OS_ORDER
-    .map((os) => ({ os, items: groupedByOs[os] }))
+  const order = getOtherDownloadsOrder(deviceClass, visitorOs)
+  const orderedGroups = order
+    .map((os) => ({ os, items: sortItemsByArch(groupedByOs[os], os) }))
     .filter((group) => group.items.length > 0)
 
   return (

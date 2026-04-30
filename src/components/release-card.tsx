@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { type Os } from "@/lib/classify-asset"
+import { type DeviceClass, type Os } from "@/lib/classify-asset"
 import type { Release } from "@/lib/github/schemas"
 import { Badge } from "./ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
@@ -16,10 +16,11 @@ type Props = {
   owner: string
   repo: string
   visitorOs: Os
+  deviceClass: DeviceClass
   latest?: boolean
 }
 
-export function ReleaseCard({ release, owner, repo, visitorOs, latest }: Props) {
+export function ReleaseCard({ release, owner, repo, visitorOs, deviceClass, latest }: Props) {
   const versionLabel = release.tag_name
   const releaseLink = `/${owner}/${repo}/v/${encodeURIComponent(release.tag_name)}`
 
@@ -58,6 +59,7 @@ export function ReleaseCard({ release, owner, repo, visitorOs, latest }: Props) 
         <ReleaseAssets
           assets={release.assets}
           visitorOs={visitorOs}
+          deviceClass={deviceClass}
           repo={`${owner}/${repo}`}
         />
       </CardContent>
