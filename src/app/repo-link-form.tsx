@@ -30,7 +30,6 @@ export function RepoLinkForm() {
           type="text"
           autoComplete="off"
           autoFocus
-          required
           placeholder="https://github.com/user/repo"
           className="h-12 flex-1 text-base"
           aria-label="GitHub repository link"

@@ -40,7 +40,6 @@ export function NavbarRepoInput() {
               name="link"
               type="text"
               autoComplete="off"
-              required
               placeholder={placeholder}
               aria-label="Go to a GitHub repository"
               aria-invalid={isInvalid ? true : undefined}

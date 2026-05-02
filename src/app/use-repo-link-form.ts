@@ -15,7 +15,7 @@ export type UseRepoLinkFormReturn = {
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onBlur: () => void
-  onSubmit: () => void
+  onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void
   formRef: React.RefObject<HTMLFormElement | null>
 }
 
@@ -54,11 +54,18 @@ export function useRepoLinkForm(): UseRepoLinkFormReturn {
     setSuppressed(true)
   }, [])
 
-  const onSubmit = useCallback(() => {
-    setHasSubmitted(true)
-    setSuppressed(false)
-    setLiveError(validate(value))
-  }, [validate, value])
+  const onSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      if (!value.trim()) {
+        e.preventDefault()
+        return
+      }
+      setHasSubmitted(true)
+      setSuppressed(false)
+      setLiveError(validate(value))
+    },
+    [validate, value]
+  )
 
   const rawError = liveError ?? state.error
   const error = suppressed ? undefined : rawError
