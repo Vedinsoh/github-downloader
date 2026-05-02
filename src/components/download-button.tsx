@@ -4,9 +4,11 @@ import { track } from "@vercel/analytics"
 import { Download } from "lucide-react"
 import { Button } from "./ui/button"
 import { OS_ICONS, OS_LABELS, type Os } from "@/lib/classify-asset"
+import { middleTruncate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import React from 'react'
 
-type Props = {
+type Props = Omit<React.ComponentPropsWithRef<"a">, "href" | "onClick"> & {
   href: string
   os: Os
   architectureLabel: string
@@ -14,8 +16,7 @@ type Props = {
   fileSize: string
   assetName: string
   repo: string
-  primary?: boolean
-  sibling?: boolean
+  variant?: "primary" | "secondary" | "sibling"
   isSource?: boolean
   mode?: "archive-primary" | "os-build"
 }
@@ -28,10 +29,11 @@ export function DownloadButton({
   fileSize,
   assetName,
   repo,
-  primary,
-  sibling,
+  variant,
   isSource,
   mode,
+  className,
+  ...rest
 }: Props) {
   function onClick() {
     track("download_click", {
@@ -43,50 +45,63 @@ export function DownloadButton({
     })
   }
 
-  if (primary) {
+  if (variant === "primary") {
     return (
-      <a href={href} onClick={onClick} className="block">
-        <Button className="h-14 w-full bg-blue-600 text-base text-white hover:bg-blue-700">
-          {React.createElement(OS_ICONS[os], { className: "size-6" })}
-          <span>
-            Download for {OS_LABELS[os]}
-            {architectureLabel ? ` (${architectureLabel})` : ""}
+      <a {...rest} href={href} onClick={onClick} className={cn("block", className)}>
+        <Button className="h-auto min-h-14 w-full whitespace-normal bg-blue-600 px-4 py-3 text-white hover:bg-blue-700">
+          {React.createElement(OS_ICONS[os], { className: "size-6 shrink-0" })}
+          <span className="flex-1 text-left text-balance">
+            <span className="block text-base font-medium leading-tight">
+              Download for {OS_LABELS[os]}
+            </span>
+            {architectureLabel ? (
+              <span className="mt-0.5 block text-xs font-normal leading-tight opacity-90">
+                {architectureLabel}
+              </span>
+            ) : null}
           </span>
-          <Download className="size-5" />
+          <Download className="size-5 shrink-0" />
         </Button>
-        <span className="mt-2 block text-xs text-muted-foreground">
+        <span className="mt-2 block break-all text-xs text-muted-foreground">
           {fileName} · {fileSize}
         </span>
       </a>
     )
   }
 
-  if (sibling) {
-    const label = architectureLabel || "Other build"
+  if (variant === "sibling") {
     return (
-      <a href={href} onClick={onClick} className="inline-block">
+      <a
+        {...rest}
+        href={href}
+        onClick={onClick}
+        className={cn("inline-block", className)}
+        title={`${fileName} · ${fileSize}`}
+      >
         <Button
           variant="outline"
           size="sm"
           className="h-9 gap-2 rounded-full px-3 text-xs"
-          title={`${fileName} · ${fileSize}`}
         >
           {React.createElement(OS_ICONS[os], { className: "size-3.5" })}
-          <span>{label}</span>
-          <span className="text-muted-foreground">· {fileSize}</span>
+          <span>{architectureLabel}</span>
           <Download className="size-3.5" />
         </Button>
       </a>
     )
   }
 
+  const { prefix, suffix } = middleTruncate(fileName)
   return (
-    <a href={href} onClick={onClick} className="block">
+    <a {...rest} href={href} onClick={onClick} className={cn("block", className)} title={fileName}>
       <Button variant="secondary" className="h-12 w-full justify-start">
-        {React.createElement(OS_ICONS[os], { className: "size-4" })}
-        <span className="flex-1 truncate text-left">{fileName}</span>
-        <span className="text-xs text-muted-foreground">{fileSize}</span>
-        <Download className="size-4" />
+        {React.createElement(OS_ICONS[os], { className: "size-4 shrink-0" })}
+        <span className="flex min-w-0 flex-1 text-left">
+          {prefix ? <span className="truncate">{prefix}</span> : null}
+          <span className="shrink-0">{suffix}</span>
+        </span>
+        <span className="shrink-0 text-xs text-muted-foreground">{fileSize}</span>
+        <Download className="size-4 shrink-0" />
       </Button>
     </a>
   )

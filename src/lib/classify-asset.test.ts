@@ -93,6 +93,14 @@ describe("classifyAsset", () => {
     expect(classifyAsset("release.sig").isSkippable).toBe(true)
   })
 
+  it("skips .aab Android bundle", () => {
+    expect(classifyAsset("app-release.aab").isSkippable).toBe(true)
+  })
+
+  it("skips .asar.gz Electron internal bundle", () => {
+    expect(classifyAsset("obsidian-1.12.7.asar.gz").isSkippable).toBe(true)
+  })
+
   it("detects aarch64 as arm64", () => {
     expect(classifyAsset("tool-linux-aarch64.tar.gz").architecture).toBe("arm64")
   })
@@ -149,7 +157,21 @@ describe("classifyRelease — same-OS sibling ranking", () => {
     expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([1])
   })
 
-  it("caps siblings at 3, overflow goes to others", () => {
+  it("unknown-arch same-OS items go to others, not siblings", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("App-mac-arm64.dmg", 1),
+        makeAsset("App-mac.dmg", 2),
+      ],
+      "mac"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(1)
+    expect(result.sameOsSiblings).toEqual([])
+    expect(result.others.map((o) => o.asset.id)).toEqual([2])
+  })
+
+  it("known-arch siblings ranked, unknown-arch siblings flow to others", () => {
     const result = classifyRelease(
       [
         makeAsset("App-mac-arm64.dmg", 1),
@@ -162,22 +184,8 @@ describe("classifyRelease — same-OS sibling ranking", () => {
     )
     if (result.mode !== "os-build") throw new Error("expected os-build")
     expect(result.primary?.asset.id).toBe(1)
-    expect(result.sameOsSiblings).toHaveLength(3)
     expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([2, 3, 4])
     expect(result.others.map((o) => o.asset.id)).toEqual([5])
-  })
-
-  it("unknown-arch same-OS items become siblings, ranked last", () => {
-    const result = classifyRelease(
-      [
-        makeAsset("App-mac-arm64.dmg", 1),
-        makeAsset("App-mac.dmg", 2),
-      ],
-      "mac"
-    )
-    if (result.mode !== "os-build") throw new Error("expected os-build")
-    expect(result.primary?.asset.id).toBe(1)
-    expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([2])
   })
 })
 
@@ -220,6 +228,76 @@ describe("classifyRelease — CLI exclusion", () => {
     if (result.mode !== "os-build") throw new Error("expected os-build")
     expect(result.primary?.asset.id).toBe(1)
     expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([2])
+  })
+})
+
+describe("classifyRelease — tarball exclusion", () => {
+  it("drops .tar.gz when non-tarball Linux sibling at same arch exists", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("app_1.0_amd64.deb", 1),
+        makeAsset("app-linux-x64.tar.gz", 2),
+      ],
+      "linux"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(1)
+    expect(result.others).toEqual([])
+  })
+
+  it("drops macos .app.tar.gz when .dmg sibling at same arch exists", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("AppName_1.0.0_macos_aarch64.app.tar.gz", 1),
+        makeAsset("AppName_1.0.0_macos_aarch64.dmg", 2),
+        makeAsset("AppName_1.0.0_macos_x86_64.app.tar.gz", 3),
+        makeAsset("AppName_1.0.0_macos_x86_64.dmg", 4),
+      ],
+      "mac"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(2)
+    expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([4])
+    expect(result.others).toEqual([])
+  })
+
+  it("keeps .tar.gz when no non-tarball Linux sibling at same arch", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("app_1.0_amd64.deb", 1),
+        makeAsset("app-linux-arm64.tar.gz", 2),
+      ],
+      "linux"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(1)
+    expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([2])
+  })
+
+  it("all-tarball release: bypass, keep all", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("app-linux-x64.tar.gz", 1),
+        makeAsset("app-linux-arm64.tar.gz", 2),
+      ],
+      "linux"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(1)
+    expect(result.sameOsSiblings.map((s) => s.asset.id)).toEqual([2])
+  })
+
+  it("does not drop .tar.gz when sibling is on different OS", () => {
+    const result = classifyRelease(
+      [
+        makeAsset("app-windows-x64.exe", 1),
+        makeAsset("app-linux-x64.tar.gz", 2),
+      ],
+      "linux"
+    )
+    if (result.mode !== "os-build") throw new Error("expected os-build")
+    expect(result.primary?.asset.id).toBe(2)
+    expect(result.others.map((o) => o.asset.id)).toEqual([1])
   })
 })
 

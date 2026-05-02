@@ -28,7 +28,7 @@ export type ClassifiedRelease =
 
 const SIBLING_CHIP_LIMIT = 3
 
-const ARCHIVE_EXTENSIONS = [
+export const ARCHIVE_EXTENSIONS = [
   ".tar.gz",
   ".tar.xz",
   ".tar.bz2",
@@ -39,8 +39,15 @@ const ARCHIVE_EXTENSIONS = [
   ".tar",
 ]
 
+const TARBALL_EXTENSIONS = [".tar.gz", ".tar.xz", ".tar.bz2", ".tgz"]
+
 function isArchive(name: string): boolean {
   return ARCHIVE_EXTENSIONS.some((ext) => name.endsWith(ext))
+}
+
+function isTarball(name: string): boolean {
+  const lower = name.toLowerCase()
+  return TARBALL_EXTENSIONS.some((ext) => lower.endsWith(ext))
 }
 
 const ARCH_RANK: Record<Os, Architecture[]> = {
@@ -70,7 +77,7 @@ export function classifyRelease(
     .map((asset) => ({ asset, info: classifyAsset(asset.name) }))
     .filter((e) => !e.info.isSkippable)
 
-  const items = applyCliExclusion(all)
+  const items = applyTarballExclusion(applyCliExclusion(all))
 
   if (items.length === 0) {
     return { mode: "empty" }
@@ -93,10 +100,17 @@ export function classifyRelease(
   const primary = sameOsAll[0] ?? null
   const sameOsRest = primary ? sameOsAll.slice(1) : []
 
-  const sameOsSiblings = sameOsRest.slice(0, SIBLING_CHIP_LIMIT)
-  const sameOsOverflow = sameOsRest.slice(SIBLING_CHIP_LIMIT)
+  const archKnownSiblings = sameOsRest.filter(
+    (e) => e.info.architecture !== "unknown"
+  )
+  const archUnknownSameOs = sameOsRest.filter(
+    (e) => e.info.architecture === "unknown"
+  )
 
-  const others = [...sameOsOverflow, ...otherOs]
+  const sameOsSiblings = archKnownSiblings.slice(0, SIBLING_CHIP_LIMIT)
+  const siblingOverflow = archKnownSiblings.slice(SIBLING_CHIP_LIMIT)
+
+  const others = [...siblingOverflow, ...archUnknownSameOs, ...otherOs]
 
   return {
     mode: "os-build",
@@ -122,6 +136,22 @@ function applyCliExclusion(items: ReleaseItem[]): ReleaseItem[] {
   })
 }
 
+function applyTarballExclusion(items: ReleaseItem[]): ReleaseItem[] {
+  const hasNonTarball = items.some((e) => !isTarball(e.asset.name))
+  if (!hasNonTarball) return items
+
+  return items.filter((e) => {
+    if (!isTarball(e.asset.name)) return true
+    const hasNonTarballSibling = items.some(
+      (s) =>
+        !isTarball(s.asset.name) &&
+        s.info.os === e.info.os &&
+        s.info.architecture === e.info.architecture
+    )
+    return !hasNonTarballSibling
+  })
+}
+
 const SKIP_EXTENSIONS = [
   ".sig",
   ".asc",
@@ -131,8 +161,12 @@ const SKIP_EXTENSIONS = [
   ".md5",
   ".txt",
   ".json",
+  ".yml",
   ".pem",
   ".sbom",
+  ".aab",
+  ".asar.gz",
+  ".blockmap"
 ]
 
 const SKIP_NAME_PATTERNS = [
@@ -177,7 +211,7 @@ function detectOs(name: string): Os {
     return "mac"
   }
 
-  if (name.endsWith(".apk") || name.endsWith(".aab")) {
+  if (name.endsWith(".apk")) {
     return "android"
   }
 
@@ -233,10 +267,18 @@ export const OS_ICONS: Record<Os, IconType> = {
 
 export const ARCHITECTURE_LABELS: Record<Architecture, string> = {
   arm64: "ARM 64-bit",
-  x64: "Intel / 64-bit",
+  x64: "64-bit",
   x86: "32-bit",
   universal: "Universal",
   unknown: "",
+}
+
+export function getArchitectureLabel(os: Os, arch: Architecture): string {
+  if (os === "mac") {
+    if (arch === "arm64") return "Apple Silicon"
+    if (arch === "x64") return "Intel"
+  }
+  return ARCHITECTURE_LABELS[arch]
 }
 
 const DESKTOP_OS_ORDER: Os[] = ["windows", "mac", "linux", "android", "ios", "unknown"]

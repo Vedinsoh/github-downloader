@@ -1,6 +1,6 @@
 import { FileArchive } from "lucide-react"
 import {
-  ARCHITECTURE_LABELS,
+  getArchitectureLabel,
   getOtherDownloadsOrder,
   OS_LABELS,
   sortItemsByArch,
@@ -54,30 +54,27 @@ export function OtherDownloads({
         </span>
       </summary>
       <div className="mt-4 space-y-4">
-        {orderedGroups.map((group) => {
-
-          return (
-            <section key={group.os}>
-              <h4 className="mb-2 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <span>{OS_LABELS[group.os]}</span>
-              </h4>
-              <div className="space-y-2">
-                {group.items.map((item) => (
-                  <DownloadButton
-                    key={item.asset.id}
-                    href={item.asset.browser_download_url}
-                    os={item.info.os}
-                    architectureLabel={ARCHITECTURE_LABELS[item.info.architecture]}
-                    fileName={item.asset.name}
-                    fileSize={formatBytes(item.asset.size)}
-                    assetName={item.asset.name}
-                    repo={repo}
-                  />
-                ))}
-              </div>
-            </section>
-          )
-        })}
+        {orderedGroups.map((group) => (
+          <section key={group.os}>
+            <h4 className="mb-2 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <span>{OS_LABELS[group.os]}</span>
+            </h4>
+            <div className="space-y-2">
+              {group.items.map((item) => (
+                <DownloadButton
+                  key={item.asset.id}
+                  href={item.asset.browser_download_url}
+                  os={item.info.os}
+                  architectureLabel={getArchitectureLabel(item.info.os, item.info.architecture)}
+                  fileName={item.asset.name}
+                  fileSize={formatBytes(item.asset.size)}
+                  assetName={item.asset.name}
+                  repo={repo}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
     </details>
   )

@@ -1,8 +1,8 @@
 "use client"
 
 import {
-  ARCHITECTURE_LABELS,
   classifyRelease,
+  getArchitectureLabel,
   OS_LABELS,
   type DeviceClass,
   type Os,
@@ -11,6 +11,7 @@ import { formatBytes } from "@/lib/format"
 import type { ReleaseAsset } from "@/lib/github/schemas"
 import { DownloadButton } from "./download-button"
 import { OtherDownloads } from "./other-downloads"
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 type Props = {
   assets: ReleaseAsset[]
@@ -38,7 +39,7 @@ export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
             key={asset.id}
             href={asset.browser_download_url}
             os={info.os}
-            architectureLabel={ARCHITECTURE_LABELS[info.architecture]}
+            architectureLabel={getArchitectureLabel(info.os, info.architecture)}
             fileName={asset.name}
             fileSize={formatBytes(asset.size)}
             assetName={asset.name}
@@ -57,14 +58,14 @@ export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
       {primary ? (
         <div className="space-y-3">
           <DownloadButton
+            variant="primary"
             href={primary.asset.browser_download_url}
             os={primary.info.os}
-            architectureLabel={ARCHITECTURE_LABELS[primary.info.architecture]}
+            architectureLabel={getArchitectureLabel(primary.info.os, primary.info.architecture)}
             fileName={primary.asset.name}
             fileSize={formatBytes(primary.asset.size)}
             assetName={primary.asset.name}
             repo={repo}
-            primary
             mode="os-build"
           />
           {sameOsSiblings.length > 0 ? (
@@ -73,18 +74,24 @@ export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
                 Also available:
               </span>
               {sameOsSiblings.map(({ asset, info }) => (
-                <DownloadButton
-                  key={asset.id}
-                  href={asset.browser_download_url}
-                  os={info.os}
-                  architectureLabel={ARCHITECTURE_LABELS[info.architecture]}
-                  fileName={asset.name}
-                  fileSize={formatBytes(asset.size)}
-                  assetName={asset.name}
-                  repo={repo}
-                  sibling
-                  mode="os-build"
-                />
+                <Tooltip key={asset.id}>
+                  <TooltipTrigger asChild>
+                    <DownloadButton
+                      variant='sibling'
+                      href={asset.browser_download_url}
+                      os={info.os}
+                      architectureLabel={getArchitectureLabel(info.os, info.architecture)}
+                      fileName={asset.name}
+                      fileSize={formatBytes(asset.size)}
+                      assetName={asset.name}
+                      repo={repo}
+                      mode="os-build"
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {asset.name}
+                  </TooltipContent>
+                </Tooltip>
               ))}
             </div>
           ) : null}
