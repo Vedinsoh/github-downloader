@@ -5,6 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css"
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { links } from '@/lib/constants/links'
+import { Navbar } from '@/components/navbar'
 
 const inter = Inter({
   variable: "--font-sans",
@@ -48,7 +49,10 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="flex min-h-full flex-col">
-        <TooltipProvider>{children}</TooltipProvider>
+        <TooltipProvider>
+          <Navbar />
+          {children}
+        </TooltipProvider>
         <Analytics />
         <SpeedInsights />
       </body>

@@ -16,7 +16,6 @@ import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
 import React from 'react'
 import { BetaToggle } from '@/components/beta-toggle'
-import { Navbar } from '@/components/navbar'
 import { links } from '@/lib/constants/links'
 
 const MAX_PAGE = 100
@@ -122,7 +121,6 @@ export default async function RepoPage({
 
   return (
     <>
-      <Navbar />
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
         <RepoHeader repo={repoResult.data} />
 

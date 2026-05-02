@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils"
 import { FaGithub } from 'react-icons/fa'
 import { links } from '@/lib/constants/links'
+import { NavbarRepoInput } from '@/components/navbar-repo-input'
 
 // Simple logo component for the navbar
 const Logo = (props: React.SVGAttributes<SVGElement>) => {
@@ -35,7 +37,7 @@ const Logo = (props: React.SVGAttributes<SVGElement>) => {
 }
 
 const Title = () => (
-  <div className="hidden text-xl sm:inline-block">
+  <div className="hidden text-xl lg:inline-block">
     github
     <span className="font-extrabold bg-linear-to-r from-fuchsia-700 to-red-400 bg-clip-text text-transparent">
     dl
@@ -97,7 +99,7 @@ export interface NavbarProps extends React.HTMLAttributes<HTMLElement> {
 
 // Default navigation links
 const defaultNavigationLinks: NavbarNavLink[] = [
-  { href: "/", label: "Home" },
+  // { href: "/", label: "Home" },
 ]
 
 export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
@@ -113,6 +115,8 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
   ) => {
     const [isMobile, setIsMobile] = useState(false)
     const containerRef = useRef<HTMLElement>(null)
+    const pathname = usePathname()
+    const showRepoInput = pathname !== "/"
 
     useEffect(() => {
       const checkWidth = () => {
@@ -156,9 +160,9 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
         ref={combinedRef}
         {...props}
       >
-        <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-4">
+        <div className="container mx-auto flex h-16 max-w-screen-2xl items-center gap-6">
           {/* Left side */}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {/* Mobile menu trigger */}
             {isMobile && (
               <Popover>
@@ -227,8 +231,12 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
               )}
             </div>
           </div>
+          {/* Middle: repo input (hidden on /) */}
+          <div className="flex flex-1 justify-center">
+            {showRepoInput ? <NavbarRepoInput /> : null}
+          </div>
           {/* Right side */}
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <Button asChild size="sm" variant="secondary">
               <a
                 href={links.githubRepo}
