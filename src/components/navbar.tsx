@@ -1,15 +1,14 @@
+"use client";
 
-"use client"
-
-import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { FaGithub } from 'react-icons/fa'
-import { links } from '@/lib/constants/links'
-import { NavbarRepoInput } from '@/components/navbar-repo-input'
+import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { FaGithub } from "react-icons/fa";
+import { links } from "@/lib/constants/links";
+import { NavbarRepoInput } from "@/components/navbar-repo-input";
 
 // Simple logo component for the navbar
 const Logo = (props: React.SVGAttributes<SVGElement>) => {
@@ -27,83 +26,74 @@ const Logo = (props: React.SVGAttributes<SVGElement>) => {
       <rect fill="currentColor" height="323" rx="161.5" width="323" x="0.5" />
       <circle cx="162" cy="161.5" fill="white" r="60" className="dark:fill-black" />
     </svg>
-  )
-}
+  );
+};
 
 const Title = () => (
   <div className="hidden text-xl lg:inline-block">
     github
-    <span className="font-extrabold bg-linear-to-r from-fuchsia-700 to-red-400 bg-clip-text text-transparent">
-    dl
+    <span className="bg-linear-to-r from-fuchsia-700 to-red-400 bg-clip-text font-extrabold text-transparent">
+      dl
     </span>
     .com
   </div>
-)
+);
 
 // Types
 export interface NavbarNavLink {
-  href: string
-  label: string
-  active?: boolean
+  href: string;
+  label: string;
+  active?: boolean;
 }
 
 export interface NavbarProps extends React.HTMLAttributes<HTMLElement> {
-  logo?: React.ReactNode
-  logoHref?: string
-  navigationLinks?: NavbarNavLink[]
-  signInText?: string
-  signInHref?: string
-  ctaText?: string
-  ctaHref?: string
-  onSignInClick?: () => void
-  onCtaClick?: () => void
+  logo?: React.ReactNode;
+  logoHref?: string;
+  navigationLinks?: NavbarNavLink[];
+  signInText?: string;
+  signInHref?: string;
+  ctaText?: string;
+  ctaHref?: string;
+  onSignInClick?: () => void;
+  onCtaClick?: () => void;
 }
 
-
 export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
-  (
-    {
-      className,
-      logo = <Logo />,
-      logoHref = "/",
-      ...props
-    },
-    ref,
-  ) => {
-    const containerRef = useRef<HTMLElement>(null)
-    const pathname = usePathname()
-    const showRepoInput = pathname !== "/"
+  ({ className, logo = <Logo />, logoHref = "/", ...props }, ref) => {
+    const containerRef = useRef<HTMLElement>(null);
+    const pathname = usePathname();
+    const showRepoInput = pathname !== "/";
 
     // Combine refs
     const combinedRef = React.useCallback(
       (node: HTMLElement | null) => {
-        containerRef.current = node
+        containerRef.current = node;
         if (typeof ref === "function") {
-          ref(node)
+          ref(node);
         } else if (ref) {
-          ref.current = node
+          ref.current = node;
         }
       },
       [ref],
-    )
+    );
 
     return (
       <nav
         className={cn(
-          "sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 px-4 md:px-6 **:no-underline",
+          "bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 w-full border-b px-4 backdrop-blur **:no-underline md:px-6",
           className,
         )}
         ref={combinedRef}
         {...props}
       >
-        <div className="container relative mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-6">
+        <div className="relative container mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-6">
           {/* Left side */}
           <div className="flex shrink-0 items-center gap-2">
             {/* Main nav */}
             <div className="flex items-center gap-6">
               <Link
                 href={logoHref}
-                className="flex items-center space-x-2 text-primary hover:text-primary/90 transition-colors"
+                className="text-primary hover:text-primary/90 flex items-center space-x-2 transition-colors"
               >
                 <div className="text-2xl">{logo}</div>
                 <Title />
@@ -119,7 +109,7 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
                 "xl:pointer-events-none xl:absolute xl:inset-x-0 xl:top-1/2 xl:mx-auto xl:w-full xl:max-w-3xl xl:flex-none xl:-translate-y-1/2 xl:px-6",
               )}
             >
-              <div className="w-full max-w-2xl xl:max-w-none xl:pointer-events-auto">
+              <div className="w-full max-w-2xl xl:pointer-events-auto xl:max-w-none">
                 <NavbarRepoInput />
               </div>
             </div>
@@ -133,7 +123,7 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
                 rel="noopener noreferrer"
                 className="inline-flex items-center text-sm"
               >
-                <FaGithub className="size-4 mr-1" />
+                <FaGithub className="mr-1 size-4" />
                 <span className="hidden sm:inline">Star on GitHub</span>
                 <span className="sm:hidden">Star</span>
               </a>
@@ -141,10 +131,10 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
           </div>
         </div>
       </nav>
-    )
+    );
   },
-)
+);
 
-Navbar.displayName = "Navbar"
+Navbar.displayName = "Navbar";
 
-export { Logo }
+export { Logo };

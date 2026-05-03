@@ -1,9 +1,9 @@
-import { links } from '@/lib/constants/links'
-import Link from "next/link"
+import { links } from "@/lib/constants/links";
+import Link from "next/link";
 
 export function SiteFooter() {
   return (
-    <footer className="mx-auto w-full max-w-3xl px-6 py-10 text-sm text-muted-foreground">
+    <footer className="text-muted-foreground mx-auto w-full max-w-3xl px-6 py-10 text-sm">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span>Not affiliated with GitHub.</span>
         <Link href="/about" className="hover:underline">
@@ -23,5 +23,5 @@ export function SiteFooter() {
         </a>
       </p>
     </footer>
-  )
+  );
 }

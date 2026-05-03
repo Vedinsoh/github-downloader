@@ -1,38 +1,23 @@
-"use client"
+"use client";
 
-import { useParams } from "next/navigation"
-import { Loader2, Search } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
-import { useRepoLinkForm } from "@/app/use-repo-link-form"
+import { useParams } from "next/navigation";
+import { Loader2, Search } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { useRepoLinkForm } from "@/app/use-repo-link-form";
 
 export function NavbarRepoInput() {
-  const {
-    formAction,
-    pending,
-    error,
-    isInvalid,
-    value,
-    onChange,
-    onBlur,
-    onSubmit,
-    formRef,
-  } = useRepoLinkForm()
+  const { formAction, pending, error, isInvalid, value, onChange, onBlur, onSubmit, formRef } =
+    useRepoLinkForm();
 
-  const params = useParams<{ owner?: string; repo?: string }>()
-  const currentRepo =
-    params?.owner && params?.repo ? `${params.owner}/${params.repo}` : null
-  const placeholder = `https://github.com/${currentRepo ?? "user/repo"}`
+  const params = useParams<{ owner?: string; repo?: string }>();
+  const currentRepo = params?.owner && params?.repo ? `${params.owner}/${params.repo}` : null;
+  const placeholder = `https://github.com/${currentRepo ?? "user/repo"}`;
 
-  const hasValue = value.length > 0
+  const hasValue = value.length > 0;
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      onSubmit={onSubmit}
-      className="flex w-full"
-    >
+    <form ref={formRef} action={formAction} onSubmit={onSubmit} className="flex w-full">
       <Tooltip open={Boolean(error)}>
         <TooltipTrigger asChild>
           <div className="group relative w-full">
@@ -49,12 +34,12 @@ export function NavbarRepoInput() {
               data-has-value={hasValue || undefined}
               data-invalid={isInvalid || undefined}
               className={cn(
-                "h-9 w-full rounded-lg border px-3 pr-9 text-sm outline-none transition-all duration-150",
-                "border-border/40 bg-transparent placeholder:text-muted-foreground/50",
+                "h-9 w-full rounded-lg border px-3 pr-9 text-sm transition-all duration-150 outline-none",
+                "border-border/40 placeholder:text-muted-foreground/50 bg-transparent",
                 "hover:border-border hover:bg-background hover:placeholder:text-muted-foreground",
                 "focus:border-border focus:bg-background focus:placeholder:text-muted-foreground",
                 "data-has-value:border-border data-has-value:bg-background data-has-value:placeholder:text-muted-foreground",
-                "data-invalid:border-destructive data-invalid:bg-background"
+                "data-invalid:border-destructive data-invalid:bg-background",
               )}
             />
             <button
@@ -63,10 +48,10 @@ export function NavbarRepoInput() {
               disabled={pending}
               aria-label="Search"
               className={cn(
-                "absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground/50 transition-opacity duration-150",
+                "text-muted-foreground/50 absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md transition-opacity duration-150",
                 "group-hover:text-muted-foreground group-focus-within:text-muted-foreground",
                 hasValue && "text-muted-foreground",
-                isInvalid && "text-destructive"
+                isInvalid && "text-destructive",
               )}
             >
               {pending ? (
@@ -84,5 +69,5 @@ export function NavbarRepoInput() {
         ) : null}
       </Tooltip>
     </form>
-  )
+  );
 }

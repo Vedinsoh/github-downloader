@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
-import { releaseSchema, repoSchema } from "./schemas"
+import { describe, expect, it } from "vitest";
+import { releaseSchema, repoSchema } from "./schemas";
 
 describe("repoSchema", () => {
   it("parses minimal valid repo", () => {
@@ -14,9 +14,9 @@ describe("repoSchema", () => {
         avatar_url: "https://avatars.githubusercontent.com/u/1529926?v=4",
         html_url: "https://github.com/redis",
       },
-    })
-    expect(result.success).toBe(true)
-  })
+    });
+    expect(result.success).toBe(true);
+  });
 
   it("accepts null description", () => {
     const result = repoSchema.safeParse({
@@ -30,10 +30,10 @@ describe("repoSchema", () => {
         avatar_url: "https://avatars.githubusercontent.com/u/1?v=4",
         html_url: "https://github.com/user",
       },
-    })
-    expect(result.success).toBe(true)
-  })
-})
+    });
+    expect(result.success).toBe(true);
+  });
+});
 
 describe("releaseSchema", () => {
   it("parses release with assets", () => {
@@ -54,9 +54,9 @@ describe("releaseSchema", () => {
           browser_download_url: "https://github.com/x/y",
         },
       ],
-    })
-    expect(result.success).toBe(true)
-  })
+    });
+    expect(result.success).toBe(true);
+  });
 
   it("parses release with empty assets", () => {
     const result = releaseSchema.safeParse({
@@ -68,7 +68,7 @@ describe("releaseSchema", () => {
       published_at: null,
       html_url: "https://github.com/x/y",
       assets: [],
-    })
-    expect(result.success).toBe(true)
-  })
-})
+    });
+    expect(result.success).toBe(true);
+  });
+});

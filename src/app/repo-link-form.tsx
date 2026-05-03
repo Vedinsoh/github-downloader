@@ -1,29 +1,15 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { useRepoLinkForm } from "./use-repo-link-form"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useRepoLinkForm } from "./use-repo-link-form";
 
 export function RepoLinkForm() {
-  const {
-    formAction,
-    pending,
-    error,
-    isInvalid,
-    value,
-    onChange,
-    onBlur,
-    onSubmit,
-    formRef,
-  } = useRepoLinkForm()
+  const { formAction, pending, error, isInvalid, value, onChange, onBlur, onSubmit, formRef } =
+    useRepoLinkForm();
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      onSubmit={onSubmit}
-      className="relative w-full"
-    >
+    <form ref={formRef} action={formAction} onSubmit={onSubmit} className="relative w-full">
       <div className="flex flex-col gap-2 sm:flex-row">
         <Input
           name="link"
@@ -54,5 +40,5 @@ export function RepoLinkForm() {
         {error ?? ""}
       </p>
     </form>
-  )
+  );
 }

@@ -1,12 +1,12 @@
-import Image from "next/image"
-import { Badge } from "./ui/badge"
-import type { Repo } from "@/lib/github/schemas"
-import { Button } from './ui/button'
-import { FaGithub } from 'react-icons/fa'
+import Image from "next/image";
+import { Badge } from "./ui/badge";
+import type { Repo } from "@/lib/github/schemas";
+import { Button } from "./ui/button";
+import { FaGithub } from "react-icons/fa";
 
 export function RepoHeader({ repo }: { repo: Repo }) {
-  const repoUrl = repo.html_url
-  const repoOwnerUrl = repo.owner.html_url
+  const repoUrl = repo.html_url;
+  const repoOwnerUrl = repo.owner.html_url;
 
   return (
     <header className="space-y-3">
@@ -21,12 +21,18 @@ export function RepoHeader({ repo }: { repo: Repo }) {
         />
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">
-            <a href={repoUrl} target="_blank" rel="noopener noreferrer" className='hover:underline'>
+            <a href={repoUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
               {repo.name}
             </a>
           </h1>
-          <p className="text-sm text-muted-foreground">by{" "}
-            <a href={repoOwnerUrl} target="_blank" rel="noopener noreferrer" className='hover:underline'>
+          <p className="text-muted-foreground text-sm">
+            by{" "}
+            <a
+              href={repoOwnerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
               {repo.owner.login}
             </a>
           </p>
@@ -37,15 +43,15 @@ export function RepoHeader({ repo }: { repo: Repo }) {
             href={repoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center text-sm text-muted-foreground"
+            className="text-muted-foreground inline-flex items-center text-sm"
           >
             <FaGithub />
           </a>
         </Button>
       </div>
       {repo.description ? (
-        <p className="text-base text-muted-foreground">{repo.description}</p>
+        <p className="text-muted-foreground text-base">{repo.description}</p>
       ) : null}
     </header>
-  )
+  );
 }

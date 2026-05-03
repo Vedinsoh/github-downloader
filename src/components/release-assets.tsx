@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   classifyRelease,
@@ -6,29 +6,29 @@ import {
   OS_LABELS,
   type DeviceClass,
   type Os,
-} from "@/lib/classify-asset"
-import { formatBytes } from "@/lib/format"
-import type { ReleaseAsset } from "@/lib/github/schemas"
-import { DownloadButton } from "./download-button"
-import { OtherDownloads } from "./other-downloads"
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
+} from "@/lib/classify-asset";
+import { formatBytes } from "@/lib/format";
+import type { ReleaseAsset } from "@/lib/github/schemas";
+import { DownloadButton } from "./download-button";
+import { OtherDownloads } from "./other-downloads";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 type Props = {
-  assets: ReleaseAsset[]
-  visitorOs: Os
-  deviceClass: DeviceClass
-  repo: string
-}
+  assets: ReleaseAsset[];
+  visitorOs: Os;
+  deviceClass: DeviceClass;
+  repo: string;
+};
 
 export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
-  const classified = classifyRelease(assets, visitorOs)
+  const classified = classifyRelease(assets, visitorOs);
 
   if (classified.mode === "empty") {
     return (
-      <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+      <p className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
         No downloads available
       </p>
-    )
+    );
   }
 
   if (classified.mode === "archive-primary") {
@@ -48,10 +48,10 @@ export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
           />
         ))}
       </div>
-    )
+    );
   }
 
-  const { primary, sameOsSiblings, others } = classified
+  const { primary, sameOsSiblings, others } = classified;
 
   return (
     <div className="space-y-6">
@@ -70,14 +70,12 @@ export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
           />
           {sameOsSiblings.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                Also available:
-              </span>
+              <span className="text-muted-foreground text-xs">Also available:</span>
               {sameOsSiblings.map(({ asset, info }) => (
                 <Tooltip key={asset.id}>
                   <TooltipTrigger asChild>
                     <DownloadButton
-                      variant='sibling'
+                      variant="sibling"
                       href={asset.browser_download_url}
                       os={info.os}
                       architectureLabel={getArchitectureLabel(info.os, info.architecture)}
@@ -88,18 +86,15 @@ export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
                       mode="os-build"
                     />
                   </TooltipTrigger>
-                  <TooltipContent>
-                    {asset.name}
-                  </TooltipContent>
+                  <TooltipContent>{asset.name}</TooltipContent>
                 </Tooltip>
               ))}
             </div>
           ) : null}
         </div>
       ) : (
-        <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-          No download for {OS_LABELS[visitorOs]} in this version. See other
-          systems below.
+        <p className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
+          No download for {OS_LABELS[visitorOs]} in this version. See other systems below.
         </p>
       )}
 
@@ -112,5 +107,5 @@ export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
         />
       ) : null}
     </div>
-  )
+  );
 }

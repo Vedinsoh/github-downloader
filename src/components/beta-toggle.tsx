@@ -1,6 +1,5 @@
-
-import { Switch } from './ui/switch'
-import { Label } from './ui/label'
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 
 export function BetaToggle() {
   return (
@@ -8,5 +7,5 @@ export function BetaToggle() {
       <Switch id="beta-toggle" />
       <Label htmlFor="beta-toggle">Show beta versions</Label>
     </div>
-  )
+  );
 }

@@ -88,11 +88,11 @@ Invalid → `notFound()`. Reserved owner names → `notFound()`.
 
 Vocabulary mapping (UI is non-technical):
 
-| GitHub | UI label |
-|---|---|
-| Release | Version |
-| Pre-release | Beta badge |
-| Asset | Download |
+| GitHub                   | UI label                                |
+| ------------------------ | --------------------------------------- |
+| Release                  | Version                                 |
+| Pre-release              | Beta badge                              |
+| Asset                    | Download                                |
 | Source code (zip/tar.gz) | Source code (for developers), collapsed |
 
 Per release:
@@ -140,7 +140,7 @@ OS detection from `User-Agent` header on server. Asset classification from filen
 ## Caching contract
 
 - **Never put per-request data into the `fetch()` URL or headers** for GitHub calls — would shatter the Data Cache. The token goes in `Authorization` header, fine because it's identical across requests.
-- The `redirect: "manual"` on `ghFetch` is intentional — we want to *see* GitHub's 301 and re-emit it as our own redirect to the new canonical path. If you switch to default `redirect: "follow"`, the rename-handling path (`{ kind: "moved" }`) becomes unreachable.
+- The `redirect: "manual"` on `ghFetch` is intentional — we want to _see_ GitHub's 301 and re-emit it as our own redirect to the new canonical path. If you switch to default `redirect: "follow"`, the rename-handling path (`{ kind: "moved" }`) becomes unreachable.
 - Cache tags follow `repo:{o}/{r}` and `repo:{o}/{r}:p{n}` / `:tag:{t}`. If we ever wire on-demand revalidation (webhook, manual flush endpoint), use `revalidateTag` with these.
 
 ## Asset classifier — how to extend

@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { z } from "zod";
 
 export const repoSchema = z.object({
   full_name: z.string(),
@@ -11,7 +11,7 @@ export const repoSchema = z.object({
     avatar_url: z.string(),
     html_url: z.string(),
   }),
-})
+});
 
 export const releaseAssetSchema = z.object({
   id: z.number(),
@@ -20,7 +20,7 @@ export const releaseAssetSchema = z.object({
   download_count: z.number(),
   browser_download_url: z.string(),
   content_type: z.string().optional(),
-})
+});
 
 export const releaseSchema = z.object({
   id: z.number(),
@@ -31,10 +31,10 @@ export const releaseSchema = z.object({
   published_at: z.string().nullable(),
   html_url: z.string(),
   assets: z.array(releaseAssetSchema),
-})
+});
 
-export const releaseListSchema = z.array(releaseSchema)
+export const releaseListSchema = z.array(releaseSchema);
 
-export type Repo = z.infer<typeof repoSchema>
-export type Release = z.infer<typeof releaseSchema>
-export type ReleaseAsset = z.infer<typeof releaseAssetSchema>
+export type Repo = z.infer<typeof repoSchema>;
+export type Release = z.infer<typeof releaseSchema>;
+export type ReleaseAsset = z.infer<typeof releaseAssetSchema>;
