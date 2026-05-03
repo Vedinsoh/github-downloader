@@ -1,8 +1,8 @@
 import Image from "next/image";
-import { Badge } from "./ui/badge";
 import type { Repo } from "@/lib/github/schemas";
 import { Button } from "./ui/button";
 import { FaGithub } from "react-icons/fa";
+import { Card, CardContent } from "./ui/card";
 
 export function RepoHeader({ repo }: { repo: Repo }) {
   const repoUrl = repo.html_url;
@@ -10,6 +10,13 @@ export function RepoHeader({ repo }: { repo: Repo }) {
 
   return (
     <header className="space-y-3">
+      {repo.archived ? (
+        <Card className="mb-8 ring-2 ring-orange-400/50">
+          <CardContent>
+            <p>This project is no longer maintained.</p>
+          </CardContent>
+        </Card>
+      ) : null}
       <div className="flex items-center gap-3">
         <Image
           src={repo.owner.avatar_url}
@@ -37,7 +44,6 @@ export function RepoHeader({ repo }: { repo: Repo }) {
             </a>
           </p>
         </div>
-        {repo.archived ? <Badge variant="destructive">No longer maintained</Badge> : null}
         <Button variant="ghost" size="icon">
           <a
             href={repoUrl}
