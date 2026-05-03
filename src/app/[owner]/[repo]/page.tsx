@@ -127,7 +127,7 @@ export default async function RepoPage({
         <BetaToggle />
 
         {releases.length === 0 && page === 1 ? (
-          <NoReleasesState ownerRepo={ownerRepo} />
+          <NoReleasesState />
         ) : (
           <>
             <section className="space-y-8">

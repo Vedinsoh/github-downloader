@@ -23,18 +23,10 @@ export function BusyState() {
   )
 }
 
-export function NoReleasesState({ ownerRepo }: { ownerRepo: string }) {
+export function NoReleasesState() {
   return (
     <div className="space-y-4 py-10 text-center">
-      <p className="text-lg">{ownerRepo} hasn&rsquo;t published any downloads yet.</p>
-      <a
-        href={`https://github.com/${ownerRepo}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-sm hover:underline"
-      >
-        View the repository on GitHub →
-      </a>
+      <p className="text-lg">No downloads available.</p>
     </div>
   )
 }
