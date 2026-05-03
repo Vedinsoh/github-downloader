@@ -96,7 +96,7 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
         ref={combinedRef}
         {...props}
       >
-        <div className="container mx-auto flex h-16 max-w-screen-2xl items-center gap-6">
+        <div className="container relative mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-6">
           {/* Left side */}
           <div className="flex shrink-0 items-center gap-2">
             {/* Main nav */}
@@ -110,10 +110,20 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
               </Link>
             </div>
           </div>
-          {/* Middle: repo input (hidden on /) */}
-          <div className="flex flex-1 justify-center">
-            {showRepoInput ? <NavbarRepoInput /> : null}
-          </div>
+          {/* Middle: repo input — in-flow on md/lg (avoids overlap), absolutely viewport-centered on xl+ to match main content width */}
+          {showRepoInput ? (
+            <div
+              className={cn(
+                "hidden items-center",
+                "md:flex md:min-w-0 md:flex-1 md:justify-center",
+                "xl:pointer-events-none xl:absolute xl:inset-x-0 xl:top-1/2 xl:mx-auto xl:w-full xl:max-w-3xl xl:flex-none xl:-translate-y-1/2 xl:px-6",
+              )}
+            >
+              <div className="w-full max-w-2xl xl:max-w-none xl:pointer-events-auto">
+                <NavbarRepoInput />
+              </div>
+            </div>
+          ) : null}
           {/* Right side */}
           <div className="flex shrink-0 items-center gap-3">
             <Button asChild size="sm" variant="secondary">

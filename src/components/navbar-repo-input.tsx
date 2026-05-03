@@ -31,7 +31,7 @@ export function NavbarRepoInput() {
       ref={formRef}
       action={formAction}
       onSubmit={onSubmit}
-      className="hidden w-full flex-1 md:flex md:max-w-2xl md:min-w-[16rem]"
+      className="flex w-full"
     >
       <Tooltip open={Boolean(error)}>
         <TooltipTrigger asChild>
