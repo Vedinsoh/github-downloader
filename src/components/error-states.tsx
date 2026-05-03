@@ -29,6 +29,15 @@ export function NoReleasesState() {
   );
 }
 
+export function TemporarilyUnavailableState() {
+  return (
+    <div className="space-y-4 py-10 text-center">
+      <p className="text-lg">We&rsquo;re temporarily unavailable.</p>
+      <p className="text-muted-foreground text-sm">Please try again in a few minutes.</p>
+    </div>
+  );
+}
+
 export function VersionNotFoundState({ ownerRepo }: { ownerRepo: string }) {
   return (
     <div className="space-y-4 py-10 text-center">

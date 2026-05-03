@@ -21,47 +21,75 @@ Domain: `githubdl.com`. Routes: `githubdl.com/{owner}/{repo}` → releases; `…
 
 ### Data flow
 
-Server-rendered with Next.js Data Cache. Single GitHub PAT (`public_repo` scope, env `GITHUB_TOKEN`).
+Three-layer read path:
 
-- Page-1 release lists: `revalidate: 1800` (30 min)
-- Deeper paginated pages: `revalidate: 86400` (24 h)
-- `/repos/{o}/{r}` repo metadata: `revalidate: 1800`
-- `/releases/tags/{tag}`: `revalidate: 86400`
+```
+Request
+  ↓
+Next.js Data Cache (unstable_cache, 6h TTL, tag "repo:{o}/{r}")
+  ↓ miss
+Upstash Redis (7-day TTL, source-of-truth)
+  ↓ miss / chunk-expansion
+GitHub REST + GraphQL
+```
 
-Cache tags: `repo:{owner}/{repo}` and `repo:{owner}/{repo}:p{n}` / `:tag:{t}`. Future on-demand revalidation via `revalidateTag`.
+Releases are stored in Upstash Redis as the source-of-truth (`StoredReleaseSet` per
+repo: 30 releases per chunk, plus singleton merges from `/v/{tag}` deep-links).
+A separate `StoredTagsIndex` walks all release tag names via the GraphQL API so
+that `/v/{unknown-tag}` short-circuits without a GitHub round-trip. `unstable_cache`
+sits in front of both reads with a 6h TTL, tagged by `repo:{owner}/{repo}` so that
+future on-demand invalidation can use `revalidateTag` + `redis.del` together.
+
+`fetchRepo` (repo metadata) stays in Next.js Data Cache only — no Redis layer.
+TTL is 6h.
+
+`?beta=show` on the repo page is the URL-only toggle for prerelease visibility.
+Cache key includes `includeBetas` so the two views are cached separately. Pages
+with `?beta=show` are `noindex`.
 
 ### File map
 
 ```
 src/
   app/
-    layout.tsx                    root layout, fonts, analytics, theme script
-    page.tsx                      homepage (hero + form)
-    actions.ts                    server action: parse paste → redirect
-    repo-link-form.tsx            client form (useActionState)
-    [owner]/[repo]/page.tsx       releases list, paginated
-    [owner]/[repo]/v/[version]/   version deep-link page (noindex)
-    og/route.tsx                  OG image (Edge ImageResponse, no version)
-    about|privacy|terms/page.tsx  static legal pages
-    robots.ts                     robots.txt generator
+    layout.tsx                       root layout, fonts, analytics, theme script
+    page.tsx                         homepage (hero + form)
+    actions.ts                       server action: parse paste → redirect
+    repo-link-form.tsx               client form (useActionState)
+    [owner]/[repo]/page.tsx          releases list, paginated, ?beta=show toggle
+    [owner]/[repo]/v/[version]/      version deep-link page (noindex)
+    og/route.tsx                     OG image (Edge ImageResponse, no version)
+    api/internal/redis-health/       hourly cron health check (Bearer auth)
+    about|privacy|terms/page.tsx     static legal pages
+    robots.ts                        robots.txt generator
   components/
-    ui/                           shadcn primitives
+    ui/                              shadcn primitives
     site-footer.tsx
     repo-header.tsx
-    release-card.tsx              orchestrates per-release UI
-    download-button.tsx           client; fires download_click
-    other-downloads.tsx           collapsed section, grouped by OS
-    source-code-section.tsx       collapsed; auto-archive URLs
-    error-states.tsx              busy/notfound/no-releases/version-notfound
+    release-card.tsx                 orchestrates per-release UI
+    download-button.tsx              client; fires download_click
+    other-downloads.tsx              collapsed section, grouped by OS
+    beta-toggle.tsx                  client; useSearchParams + router.replace
+    error-states.tsx                 busy/notfound/no-releases/version-notfound/unavailable
   lib/
-    parse-input.ts                Zod schemas + parseRepoInput
-    classify-asset.ts             filename → OS + architecture
-    detect-os.ts                  User-Agent → OS (ua-parser-js)
-    format.ts                     bytes / date helpers
+    parse-input.ts                   Zod schemas + parseRepoInput
+    classify-asset.ts                filename → OS + architecture (operates on StoredAsset)
+    detect-os.ts                     User-Agent → OS (ua-parser-js)
+    format.ts                        bytes / date helpers
     github/
-      schemas.ts                  Zod schemas for GitHub API responses
-      client.ts                   fetchRepo / fetchReleases / fetchReleaseByTag
-  proxy.ts                        Next.js 16 "proxy" (was middleware) — rate limiter
+      schemas.ts                     Zod schemas for GitHub REST responses
+      client.ts                      ghFetch + fetchRepo + fetchReleasesChunk + fetchReleaseByTagRaw
+      graphql.ts                     ghGraphQL + walkReleaseTags (tag-name walker)
+    store/
+      schemas.ts                     StoredAsset / StoredRelease / StoredReleaseSet / StoredTagsIndex (Zod)
+      redis.ts                       Upstash client wrapper, UnavailableError, getJSON/setJSON, OOM-soft-fail
+      to-stored.ts                   Release → StoredRelease (drops fields, filters skippables)
+      merge.ts                       merge-by-tag, sort by date desc
+      slice.ts                       windowed pagination over chunks*30
+      latest-stable.ts               first non-prerelease in input order
+      releases.ts                    getReleasesPage + getReleaseByTag (unstable_cache + Redis + GH)
+      tags-index.ts                  getTagsIndex + buildTagsIndex + mergeNewTags
+  proxy.ts                           Next.js 16 "proxy" (was middleware) — rate limiter
 ```
 
 ### Routing & validation
@@ -82,7 +110,9 @@ Invalid → `notFound()`. Reserved owner names → `notFound()`.
 - 403/429 with `x-ratelimit-remaining=0` → BusyState
 - 5xx → BusyState
 - Empty release list → NoReleasesState
-- Missing tag on `/v/{version}` → VersionNotFoundState (not auto-redirect)
+- Missing tag on `/v/{version}`, confirmed against complete tags-index → VersionNotFoundState (zero GH calls)
+- Redis read failure → TemporarilyUnavailableState (hard-fail)
+- Redis write failure → soft-fail; request continues with in-memory data (logged)
 
 ### UX
 
@@ -109,7 +139,7 @@ OS detection from `User-Agent` header on server. Asset classification from filen
 - Per-page `<title>` and meta description
 - JSON-LD `SoftwareApplication` with `downloadUrl` and `softwareVersion` (only when at least one asset exists)
 - OG image at `/og?owner=…&repo=…` — repo metadata only, no version (cached 24 h)
-- `robots.txt` allows root + repo pages, disallows `/api/`, `/og`, `/*?page=`, `/*/v/`
+- `robots.txt` allows root + repo pages, disallows `/api/`, `/og`, `/*?page=`, `/*?beta=`, `/*/v/`
 - `/v/{version}` and pages 2+ are `noindex`
 - No sitemap (infinite URL space)
 
@@ -139,9 +169,22 @@ OS detection from `User-Agent` header on server. Asset classification from filen
 
 ## Caching contract
 
+| Layer                                  | Key                                                      | TTL | Tag            |
+| -------------------------------------- | -------------------------------------------------------- | --- | -------------- |
+| `unstable_cache` for `getReleasesPage` | `["releases", o, r, String(page), String(includeBetas)]` | 6h  | `repo:{o}/{r}` |
+| `unstable_cache` for `getReleaseByTag` | `["release-tag", o, r, tag]`                             | 6h  | `repo:{o}/{r}` |
+| Redis `repo:{o}/{r}:releases`          | —                                                        | 7d  | —              |
+| Redis `repo:{o}/{r}:tags`              | —                                                        | 7d  | —              |
+| `unstable_cache` for `fetchRepo`       | per Next Data Cache                                      | 6h  | `repo:{o}/{r}` |
+
+- Future on-demand refresh = `revalidateTag("repo:{o}/{r}")` + `redis.del("repo:{o}/{r}:releases")` + `redis.del("repo:{o}/{r}:tags")`.
+- Every successful Redis GET runs `EXPIRE key 604800` to refresh the 7-day window for actively-used repos.
 - **Never put per-request data into the `fetch()` URL or headers** for GitHub calls — would shatter the Data Cache. The token goes in `Authorization` header, fine because it's identical across requests.
 - The `redirect: "manual"` on `ghFetch` is intentional — we want to _see_ GitHub's 301 and re-emit it as our own redirect to the new canonical path. If you switch to default `redirect: "follow"`, the rename-handling path (`{ kind: "moved" }`) becomes unreachable.
-- Cache tags follow `repo:{o}/{r}` and `repo:{o}/{r}:p{n}` / `:tag:{t}`. If we ever wire on-demand revalidation (webhook, manual flush endpoint), use `revalidateTag` with these.
+
+## Upstash eviction
+
+Upstash exposes only Eviction: ON/OFF — the underlying algorithm is `optimistic-volatile` (volatile-random + allkeys-random). Every key we write has a 7-day TTL, so the entire keyspace sits in the volatile pool — exactly what `optimistic-volatile` evicts first. We accept that some popular entries may be evicted under pressure; cold-load via `getReleasesPage` re-populates from GitHub. OOM on `SET` is soft-failed (request continues with in-memory data); we do not run a SCAN-and-delete loop.
 
 ## Asset classifier — how to extend
 
@@ -172,8 +215,9 @@ Always run `pnpm typecheck && pnpm lint && pnpm test && pnpm build` before decla
 
 ## Env vars
 
-- `GITHUB_TOKEN` (server, required for any production use; without it dev hits the 60/hr unauthenticated bucket per IP)
-- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (server, optional in dev — rate limiter no-ops without them)
+- `GITHUB_TOKEN` (server, required for any production use; also used for GraphQL `Authorization: Bearer ${token}`)
+- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (server, optional in dev — rate limiter and store layer no-op without them)
+- `CRON_SECRET` (server, Vercel-managed; used by `/api/internal/redis-health` to reject non-cron callers)
 - `NEXT_PUBLIC_SENTRY_DSN` (when Sentry is wired)
 
 ## Pre-launch checklist
@@ -182,8 +226,10 @@ Full version with detailed steps lives in `NEXT_STEPS.md`. Quick form:
 
 - [ ] Set `GITHUB_TOKEN` in Vercel project env (sensitive, scope `public_repo`)
 - [ ] Provision Upstash Redis from Vercel Marketplace; env auto-injected
+- [ ] Upstash dashboard: **Eviction: ON**, **Auto Upgrade: OFF** (one-time, manual)
+- [ ] Set `CRON_SECRET` in Vercel project env (used by `/api/internal/redis-health`)
 - [ ] Run Sentry wizard, add DSN env, set `tracesSampleRate: 0.1`
 - [ ] Configure `info@githubdl.com` forwarding (ImprovMX)
 - [ ] Add `githubdl.com` apex + `www` redirect in Vercel domains
 - [ ] Verify Web Analytics + Speed Insights collecting in dashboard
-- [ ] Smoke test: `/redis/redis`, `/godotengine/godot`, `/obsidianmd/obsidian`, a known-archived repo, a known-renamed repo, a 404 repo
+- [ ] Smoke test: `/redis/redis`, `/godotengine/godot`, `/obsidianmd/obsidian`, `/oven-sh/bun`, a known-archived repo, a known-renamed repo, a 404 repo, `/v/{valid-tag}` deep-link, `/v/{invalid-tag}` deep-link

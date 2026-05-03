@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { type DeviceClass, type Os } from "@/lib/classify-asset";
-import type { Release } from "@/lib/github/schemas";
+import type { StoredRelease } from "@/lib/store/schemas";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ReleaseAssets } from "./release-assets";
@@ -12,7 +12,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
 type Props = {
-  release: Release;
+  release: StoredRelease;
   owner: string;
   repo: string;
   visitorOs: Os;
@@ -21,15 +21,15 @@ type Props = {
 };
 
 export function ReleaseCard({ release, owner, repo, visitorOs, deviceClass, latest }: Props) {
-  const versionLabel = release.tag_name;
-  const releaseLink = `/${owner}/${repo}/v/${encodeURIComponent(release.tag_name)}`;
+  const versionLabel = release.tag;
+  const releaseLink = `/${owner}/${repo}/v/${encodeURIComponent(release.tag)}`;
 
   let cardClass = "";
   switch (true) {
     case latest:
       cardClass = "ring-green-500";
       break;
-    case release.prerelease:
+    case release.pre:
       cardClass = "ring-yellow-900 bg-opaque/10";
       break;
   }
@@ -43,13 +43,13 @@ export function ReleaseCard({ release, owner, repo, visitorOs, deviceClass, late
               Version {versionLabel}
             </Link>
           </CardTitle>
-          {release.prerelease ? <Badge variant="destructive">Beta</Badge> : null}
+          {release.pre ? <Badge variant="destructive">Beta</Badge> : null}
           {latest ? <Badge variant="success">Latest</Badge> : null}
         </div>
         <div>
-          {release.published_at ? (
+          {release.date ? (
             <span className="text-muted-foreground w-full text-xs">
-              {dayjs(release.published_at).fromNow()}
+              {dayjs(release.date).fromNow()}
             </span>
           ) : null}
         </div>

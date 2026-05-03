@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { releaseListSchema, releaseSchema, repoSchema, type Release, type Repo } from "./schemas";
-import { links } from "../constants/links";
+import { links } from "@/lib/constants/links";
 
 const GITHUB_API = "https://api.github.com";
 
@@ -13,9 +13,9 @@ export type FetchError =
 
 export type FetchResult<T> = { ok: true; data: T } | { ok: false; error: FetchError };
 
-type CacheConfig = { revalidate: number; tags: string[] };
+type CacheConfig = { revalidate?: number; tags?: string[] };
 
-async function ghFetch(path: string, cache: CacheConfig): Promise<Response | FetchError> {
+export async function ghFetch(path: string, cache: CacheConfig): Promise<Response | FetchError> {
   const token = process.env.GITHUB_TOKEN;
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
@@ -49,13 +49,13 @@ async function ghFetch(path: string, cache: CacheConfig): Promise<Response | Fet
   return res;
 }
 
-function isFetchError(v: Response | FetchError): v is FetchError {
+export function isFetchError(v: Response | FetchError): v is FetchError {
   return !(v instanceof Response);
 }
 
 export async function fetchRepo(owner: string, repo: string): Promise<FetchResult<Repo>> {
   const res = await ghFetch(`/repos/${owner}/${repo}`, {
-    revalidate: 1800,
+    revalidate: 21600,
     tags: [`repo:${owner}/${repo}`],
   });
   if (isFetchError(res)) return { ok: false, error: res };
@@ -67,15 +67,12 @@ export async function fetchRepo(owner: string, repo: string): Promise<FetchResul
   return { ok: true, data: parsed.data };
 }
 
-export async function fetchReleases(
+export async function fetchReleasesChunk(
   owner: string,
   repo: string,
-  page: number,
+  chunk: number,
 ): Promise<FetchResult<{ releases: Release[]; hasMore: boolean }>> {
-  const res = await ghFetch(`/repos/${owner}/${repo}/releases?per_page=10&page=${page}`, {
-    revalidate: page === 1 ? 1800 : 86400,
-    tags: [`repo:${owner}/${repo}`, `repo:${owner}/${repo}:p${page}`],
-  });
+  const res = await ghFetch(`/repos/${owner}/${repo}/releases?per_page=30&page=${chunk}`, {});
   if (isFetchError(res)) return { ok: false, error: res };
 
   const linkHeader = res.headers.get("link") ?? "";
@@ -90,16 +87,13 @@ export async function fetchReleases(
   return { ok: true, data: { releases, hasMore } };
 }
 
-export async function fetchReleaseByTag(
+export async function fetchReleaseByTagRaw(
   owner: string,
   repo: string,
   tag: string,
 ): Promise<FetchResult<Release>> {
   const encoded = encodeURIComponent(tag);
-  const res = await ghFetch(`/repos/${owner}/${repo}/releases/tags/${encoded}`, {
-    revalidate: 86400,
-    tags: [`repo:${owner}/${repo}`, `repo:${owner}/${repo}:tag:${tag}`],
-  });
+  const res = await ghFetch(`/repos/${owner}/${repo}/releases/tags/${encoded}`, {});
   if (isFetchError(res)) return { ok: false, error: res };
 
   const json = await res.json();

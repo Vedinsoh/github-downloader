@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: ["/"],
-        disallow: ["/api/", "/og", "/*?page=", "/*/v/"],
+        disallow: ["/api/", "/og", "/*?page=", "/*?beta=", "/*/v/"],
       },
     ],
     host: links.app.url,

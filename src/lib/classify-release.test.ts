@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { classifyRelease } from "./classify-asset";
-import type { ReleaseAsset } from "./github/schemas";
+import type { StoredAsset } from "./store/schemas";
 
-function asset(name: string, id = 1, size = 1000): ReleaseAsset {
+function asset(name: string, size = 1000): StoredAsset {
   return {
-    id,
     name,
     size,
-    download_count: 0,
-    browser_download_url: `https://example.com/${name}`,
+    url: `https://example.com/${name}`,
   };
 }
 

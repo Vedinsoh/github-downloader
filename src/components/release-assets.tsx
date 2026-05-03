@@ -8,13 +8,13 @@ import {
   type Os,
 } from "@/lib/classify-asset";
 import { formatBytes } from "@/lib/format";
-import type { ReleaseAsset } from "@/lib/github/schemas";
+import type { StoredAsset } from "@/lib/store/schemas";
 import { DownloadButton } from "./download-button";
 import { OtherDownloads } from "./other-downloads";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 type Props = {
-  assets: ReleaseAsset[];
+  assets: StoredAsset[];
   visitorOs: Os;
   deviceClass: DeviceClass;
   repo: string;
@@ -36,8 +36,8 @@ export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
       <div className="space-y-2">
         {classified.archives.map(({ asset, info }) => (
           <DownloadButton
-            key={asset.id}
-            href={asset.browser_download_url}
+            key={asset.name}
+            href={asset.url}
             os={info.os}
             architectureLabel={getArchitectureLabel(info.os, info.architecture)}
             fileName={asset.name}
@@ -59,7 +59,7 @@ export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
         <div className="space-y-3">
           <DownloadButton
             variant="primary"
-            href={primary.asset.browser_download_url}
+            href={primary.asset.url}
             os={primary.info.os}
             architectureLabel={getArchitectureLabel(primary.info.os, primary.info.architecture)}
             fileName={primary.asset.name}
@@ -72,11 +72,11 @@ export function ReleaseAssets({ assets, visitorOs, deviceClass, repo }: Props) {
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-muted-foreground text-xs">Also available:</span>
               {sameOsSiblings.map(({ asset, info }) => (
-                <Tooltip key={asset.id}>
+                <Tooltip key={asset.name}>
                   <TooltipTrigger asChild>
                     <DownloadButton
                       variant="sibling"
-                      href={asset.browser_download_url}
+                      href={asset.url}
                       os={info.os}
                       architectureLabel={getArchitectureLabel(info.os, info.architecture)}
                       fileName={asset.name}

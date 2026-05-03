@@ -3,11 +3,17 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { ownerSchema, repoSchema } from "@/lib/parse-input";
-import { fetchRepo, fetchReleases } from "@/lib/github/client";
+import { fetchRepo } from "@/lib/github/client";
+import { getReleasesPage } from "@/lib/store/releases";
 import { detectDeviceClassFromUserAgent, detectOsFromUserAgent } from "@/lib/detect-os";
 import { ReleaseCard } from "@/components/release-card";
 import { RepoHeader } from "@/components/repo-header";
-import { BusyState, NoReleasesState, NotFoundState } from "@/components/error-states";
+import {
+  BusyState,
+  NoReleasesState,
+  NotFoundState,
+  TemporarilyUnavailableState,
+} from "@/components/error-states";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/ui/button";
 import React from "react";
@@ -17,10 +23,19 @@ import { links } from "@/lib/constants/links";
 const MAX_PAGE = 100;
 
 type Params = { owner: string; repo: string };
-type SearchParams = { page?: string };
+type SearchParams = { page?: string; beta?: string };
 
-export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>;
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
   const { owner, repo } = await params;
+  const sp = await searchParams;
+  const includeBetas = sp.beta === "show";
+
   if (!ownerSchema.safeParse(owner).success || !repoSchema.safeParse(repo).success) {
     return { title: "Not found" };
   }
@@ -43,6 +58,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
         160,
       ),
     alternates: { canonical },
+    ...(includeBetas ? { robots: { index: false } } : {}),
     openGraph: {
       title: `Download ${r.data.name} – ${r.data.owner.login}`,
       description: desc,
@@ -75,6 +91,8 @@ export default async function RepoPage({
   const page = clampPage(sp.page);
   if (page === null) notFound();
 
+  const includeBetas = sp.beta === "show";
+
   const repoResult = await fetchRepo(owner, repo);
   if (!repoResult.ok) {
     if (repoResult.error.kind === "moved") {
@@ -83,7 +101,7 @@ export default async function RepoPage({
     return renderError(owner, repo, repoResult.error.kind);
   }
 
-  const releasesResult = await fetchReleases(owner, repo, page);
+  const releasesResult = await getReleasesPage(owner, repo, page, includeBetas);
   if (!releasesResult.ok) {
     if (releasesResult.error.kind === "moved") {
       redirect(`/${releasesResult.error.owner}/${releasesResult.error.repo}`);
@@ -94,19 +112,20 @@ export default async function RepoPage({
   const ua = (await headers()).get("user-agent");
   const visitorOs = detectOsFromUserAgent(ua);
   const deviceClass = detectDeviceClassFromUserAgent(ua);
-  const { releases, hasMore } = releasesResult.data;
+  const { releases, hasMore, latestStable } = releasesResult;
 
   const ownerRepo = `${owner}/${repo}`;
+  const heroRelease = latestStable ?? releases[0] ?? null;
   const jsonLd =
-    releases[0] && releases[0].assets[0]
+    heroRelease && heroRelease.assets[0]
       ? {
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
           name: repoResult.data.name,
           applicationCategory: "DeveloperApplication",
           operatingSystem: "Windows, macOS, Linux",
-          softwareVersion: releases[0].tag_name,
-          downloadUrl: releases[0].assets[0].browser_download_url,
+          softwareVersion: heroRelease.tag,
+          downloadUrl: heroRelease.assets[0].url,
           url: `${links.app.url}/${ownerRepo}`,
         }
       : null;
@@ -124,18 +143,16 @@ export default async function RepoPage({
           <>
             <section className="space-y-8">
               {releases.map((release, i) => (
-                <React.Fragment key={release.id}>
+                <React.Fragment key={release.tag}>
                   <ReleaseCard
                     release={release}
                     owner={owner}
                     repo={repo}
                     visitorOs={visitorOs}
                     deviceClass={deviceClass}
-                    latest={page === 1 && i === 0}
-                    data-latest={page === 1 && i === 0 ? true : undefined}
+                    latest={page === 1 && latestStable !== null && release.tag === latestStable.tag}
                   />
 
-                  {/* Add a divider between releases, except after the last one */}
                   {i === 0 && page === 1 && releases.length > 1 && (
                     <hr className="border-muted-foreground/10 border-t" />
                   )}
@@ -143,7 +160,13 @@ export default async function RepoPage({
               ))}
             </section>
 
-            <Pagination owner={owner} repo={repo} page={page} hasMore={hasMore} />
+            <Pagination
+              owner={owner}
+              repo={repo}
+              page={page}
+              hasMore={hasMore}
+              includeBetas={includeBetas}
+            />
           </>
         )}
 
@@ -164,17 +187,21 @@ function Pagination({
   repo,
   page,
   hasMore,
+  includeBetas,
 }: {
   owner: string;
   repo: string;
   page: number;
   hasMore: boolean;
+  includeBetas: boolean;
 }) {
   if (page === 1 && !hasMore) return null;
+  const beta = includeBetas ? "&beta=show" : "";
+  const betaOnly = includeBetas ? "?beta=show" : "";
   return (
     <nav className="flex items-center justify-between border-t pt-6 text-sm">
       {page > 1 ? (
-        <Link href={`/${owner}/${repo}${page - 1 === 1 ? "" : `?page=${page - 1}`}`}>
+        <Link href={`/${owner}/${repo}${page - 1 === 1 ? betaOnly : `?page=${page - 1}${beta}`}`}>
           <Button variant="ghost">← Newer versions</Button>
         </Link>
       ) : (
@@ -182,7 +209,7 @@ function Pagination({
       )}
       <span className="text-muted-foreground">Page {page}</span>
       {hasMore && page < MAX_PAGE ? (
-        <Link href={`/${owner}/${repo}?page=${page + 1}`}>
+        <Link href={`/${owner}/${repo}?page=${page + 1}${beta}`}>
           <Button variant="ghost">Older versions →</Button>
         </Link>
       ) : (
@@ -193,12 +220,14 @@ function Pagination({
 }
 
 function renderError(owner: string, repo: string, kind: string) {
-  const main =
-    kind === "not_found" ? (
-      <NotFoundState message={`We couldn't find a repository called "${owner}/${repo}".`} />
-    ) : (
-      <BusyState />
-    );
+  let main: React.ReactNode;
+  if (kind === "not_found") {
+    main = <NotFoundState message={`We couldn't find a repository called "${owner}/${repo}".`} />;
+  } else if (kind === "unavailable") {
+    main = <TemporarilyUnavailableState />;
+  } else {
+    main = <BusyState />;
+  }
   return (
     <>
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">{main}</main>

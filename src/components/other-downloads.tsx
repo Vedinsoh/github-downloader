@@ -9,10 +9,10 @@ import {
   type Os,
 } from "@/lib/classify-asset";
 import { formatBytes } from "@/lib/format";
-import type { ReleaseAsset } from "@/lib/github/schemas";
+import type { StoredAsset } from "@/lib/store/schemas";
 import { DownloadButton } from "./download-button";
 
-type Item = { asset: ReleaseAsset; info: ClassifiedAsset };
+type Item = { asset: StoredAsset; info: ClassifiedAsset };
 
 export function OtherDownloads({
   items,
@@ -62,8 +62,8 @@ export function OtherDownloads({
             <div className="space-y-2">
               {group.items.map((item) => (
                 <DownloadButton
-                  key={item.asset.id}
-                  href={item.asset.browser_download_url}
+                  key={item.asset.name}
+                  href={item.asset.url}
                   os={item.info.os}
                   architectureLabel={getArchitectureLabel(item.info.os, item.info.architecture)}
                   fileName={item.asset.name}

@@ -1,7 +1,7 @@
 import { Box } from "lucide-react";
 import { IconType } from "react-icons";
 import { FaAndroid, FaApple, FaLinux, FaWindows } from "react-icons/fa";
-import type { ReleaseAsset } from "./github/schemas";
+import type { StoredAsset } from "./store/schemas";
 
 export type Os = "windows" | "mac" | "linux" | "android" | "ios" | "unknown";
 export type Architecture = "arm64" | "x64" | "x86" | "universal" | "unknown";
@@ -14,7 +14,7 @@ export type ClassifiedAsset = {
   isCli: boolean;
 };
 
-export type ReleaseItem = { asset: ReleaseAsset; info: ClassifiedAsset };
+export type ReleaseItem = { asset: StoredAsset; info: ClassifiedAsset };
 
 export type ClassifiedRelease =
   | { mode: "empty" }
@@ -69,7 +69,7 @@ function sortByArchPopularity(os: Os) {
     archRank(os, a.info.architecture) - archRank(os, b.info.architecture);
 }
 
-export function classifyRelease(assets: ReleaseAsset[], visitorOs: Os): ClassifiedRelease {
+export function classifyRelease(assets: StoredAsset[], visitorOs: Os): ClassifiedRelease {
   const all: ReleaseItem[] = assets
     .map((asset) => ({ asset, info: classifyAsset(asset.name) }))
     .filter((e) => !e.info.isSkippable);

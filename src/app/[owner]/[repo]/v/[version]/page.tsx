@@ -2,13 +2,20 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import { ownerSchema, repoSchema, versionSchema } from "@/lib/parse-input";
-import { fetchRepo, fetchReleaseByTag } from "@/lib/github/client";
+import { fetchRepo } from "@/lib/github/client";
+import { getReleaseByTag } from "@/lib/store/releases";
 import { detectDeviceClassFromUserAgent, detectOsFromUserAgent } from "@/lib/detect-os";
 import { ReleaseCard } from "@/components/release-card";
 import { RepoHeader } from "@/components/repo-header";
-import { BusyState, NotFoundState, VersionNotFoundState } from "@/components/error-states";
+import {
+  BusyState,
+  NotFoundState,
+  TemporarilyUnavailableState,
+  VersionNotFoundState,
+} from "@/components/error-states";
 import { SiteFooter } from "@/components/site-footer";
 import { links } from "@/lib/constants/links";
+import React from "react";
 
 type Params = { owner: string; repo: string; version: string };
 
@@ -40,7 +47,7 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
     return renderError(owner, repo, repoResult.error.kind);
   }
 
-  const releaseResult = await fetchReleaseByTag(owner, repo, tag);
+  const releaseResult = await getReleaseByTag(owner, repo, tag);
   if (!releaseResult.ok) {
     const ownerRepo = `${owner}/${repo}`;
     if (releaseResult.error.kind === "not_found") {
@@ -54,6 +61,9 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
         </>
       );
     }
+    if (releaseResult.error.kind === "moved") {
+      redirect(`/${releaseResult.error.owner}/${releaseResult.error.repo}/v/${version}`);
+    }
     return renderError(owner, repo, releaseResult.error.kind);
   }
 
@@ -66,7 +76,7 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
         <RepoHeader repo={repoResult.data} />
         <ReleaseCard
-          release={releaseResult.data}
+          release={releaseResult.release}
           owner={owner}
           repo={repo}
           visitorOs={visitorOs}
@@ -79,12 +89,14 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
 }
 
 function renderError(owner: string, repo: string, kind: string) {
-  const body =
-    kind === "not_found" ? (
-      <NotFoundState message={`We couldn't find a repository called "${owner}/${repo}".`} />
-    ) : (
-      <BusyState />
-    );
+  let body: React.ReactNode;
+  if (kind === "not_found") {
+    body = <NotFoundState message={`We couldn't find a repository called "${owner}/${repo}".`} />;
+  } else if (kind === "unavailable") {
+    body = <TemporarilyUnavailableState />;
+  } else {
+    body = <BusyState />;
+  }
   return (
     <>
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">{body}</main>
