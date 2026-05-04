@@ -34,7 +34,7 @@ export function NavbarRepoInput() {
               data-has-value={hasValue || undefined}
               data-invalid={isInvalid || undefined}
               className={cn(
-                "h-9 w-full rounded-lg border px-3 pr-9 text-sm transition-all duration-150 outline-none",
+                "h-9 w-full rounded-lg border px-3 pr-9 text-sm transition-colors duration-150 outline-none",
                 "border-border/40 placeholder:text-muted-foreground/50 bg-transparent",
                 "hover:border-border hover:bg-background hover:placeholder:text-muted-foreground",
                 "focus:border-border focus:bg-background focus:placeholder:text-muted-foreground",
@@ -48,7 +48,7 @@ export function NavbarRepoInput() {
               disabled={pending}
               aria-label="Search"
               className={cn(
-                "text-muted-foreground/50 absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md transition-opacity duration-150",
+                "text-muted-foreground/50 absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md transition-colors duration-150",
                 "group-hover:text-muted-foreground group-focus-within:text-muted-foreground",
                 hasValue && "text-muted-foreground",
                 isInvalid && "text-destructive",

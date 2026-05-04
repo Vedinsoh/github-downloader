@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -27,22 +26,19 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image" },
 };
 
-const themeScript = `
-(function() {
-  try {
-    var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (dark) document.documentElement.classList.add('dark');
-  } catch (e) {}
-})();
-`;
+const themeScript = `(function(){try{if(window.matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.classList.remove('dark')}catch(e){}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`dark ${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="flex min-h-full flex-col">
-        <Script id="theme-script" strategy="beforeInteractive">
-          {themeScript}
-        </Script>
         <TooltipProvider>
           <Navbar />
           {children}
