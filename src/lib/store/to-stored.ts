@@ -6,7 +6,6 @@ function toStoredAsset(asset: ReleaseAsset): StoredAsset {
   return {
     name: asset.name,
     size: asset.size,
-    url: asset.browser_download_url,
   };
 }
 

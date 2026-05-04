@@ -6,7 +6,6 @@ function asset(name: string, size = 1000): StoredAsset {
   return {
     name,
     size,
-    url: `https://example.com/${name}`,
   };
 }
 

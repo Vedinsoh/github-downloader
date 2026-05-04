@@ -72,7 +72,7 @@ export async function fetchReleasesChunk(
   repo: string,
   chunk: number,
 ): Promise<FetchResult<{ releases: Release[]; hasMore: boolean }>> {
-  const res = await ghFetch(`/repos/${owner}/${repo}/releases?per_page=30&page=${chunk}`, {});
+  const res = await ghFetch(`/repos/${owner}/${repo}/releases?per_page=20&page=${chunk}`, {});
   if (isFetchError(res)) return { ok: false, error: res };
 
   const linkHeader = res.headers.get("link") ?? "";
@@ -85,6 +85,18 @@ export async function fetchReleasesChunk(
 
   const releases = parsed.data.filter((r) => !r.draft);
   return { ok: true, data: { releases, hasMore } };
+}
+
+export async function fetchLatestRelease(owner: string, repo: string): Promise<FetchResult<Release>> {
+  const res = await ghFetch(`/repos/${owner}/${repo}/releases/latest`, {});
+  if (isFetchError(res)) return { ok: false, error: res };
+
+  const json = await res.json();
+  const parsed = releaseSchema.safeParse(json);
+  if (!parsed.success)
+    return { ok: false, error: { kind: "schema_drift", issues: parsed.error.issues } };
+  if (parsed.data.draft) return { ok: false, error: { kind: "not_found" } };
+  return { ok: true, data: parsed.data };
 }
 
 export async function fetchReleaseByTagRaw(

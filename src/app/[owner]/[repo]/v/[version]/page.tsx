@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import { ownerSchema, repoSchema, versionSchema } from "@/lib/parse-input";
 import { fetchRepo } from "@/lib/github/client";
 import { getReleaseByTag } from "@/lib/store/releases";
+import { hydrateRelease } from "@/lib/build-download-url";
 import { detectDeviceClassFromUserAgent, detectOsFromUserAgent } from "@/lib/detect-os";
 import { ReleaseCard } from "@/components/release-card";
 import { RepoHeader } from "@/components/repo-header";
@@ -16,6 +17,8 @@ import {
 import { SiteFooter } from "@/components/site-footer";
 import { links } from "@/lib/constants/links";
 import React from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 type Params = { owner: string; repo: string; version: string };
 
@@ -76,12 +79,17 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
         <RepoHeader repo={repoResult.data} />
         <ReleaseCard
-          release={releaseResult.release}
+          release={hydrateRelease(owner, repo, releaseResult.release)}
           owner={owner}
           repo={repo}
           visitorOs={visitorOs}
           deviceClass={deviceClass}
         />
+        <Link href={`/${owner}/${repo}`} className="flex justify-center">
+          <Button variant="outline" size="lg">
+            See all versions
+          </Button>
+        </Link>
       </main>
       <SiteFooter />
     </>

@@ -3,7 +3,6 @@ import { z } from "zod";
 export const storedAssetSchema = z.object({
   name: z.string(),
   size: z.number(),
-  url: z.string(),
 });
 
 export const storedReleaseSchema = z.object({

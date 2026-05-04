@@ -41,10 +41,11 @@ export function TemporarilyUnavailableState() {
 export function VersionNotFoundState({ ownerRepo }: { ownerRepo: string }) {
   return (
     <div className="space-y-4 py-10 text-center">
-      <p className="text-lg">This version isn&rsquo;t available.</p>
-      <p className="text-muted-foreground text-sm">It may have been removed or renamed.</p>
+      <p className="text-lg">This version does not exist.</p>
       <Link href={`/${ownerRepo}`}>
-        <Button variant="outline">See all versions of {ownerRepo}</Button>
+        <Button variant="outline" size="lg">
+          See all versions
+        </Button>
       </Link>
     </div>
   );

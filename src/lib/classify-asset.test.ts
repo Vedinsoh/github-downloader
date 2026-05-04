@@ -130,7 +130,6 @@ function makeAsset(name: string, _id?: number): StoredAsset {
   return {
     name,
     size: 1024,
-    url: `https://example.test/${name}`,
   };
 }
 

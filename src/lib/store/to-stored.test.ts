@@ -38,7 +38,6 @@ describe("toStored", () => {
         {
           name: "app-linux-x64.tar.gz",
           size: 1024,
-          url: "https://example.com/app-linux-x64.tar.gz",
         },
       ],
     });
@@ -53,7 +52,6 @@ describe("toStored", () => {
     expect(r.assets[0]).toEqual({
       name: "app-linux-x64.tar.gz",
       size: 1024,
-      url: "https://example.com/app-linux-x64.tar.gz",
     });
   });
 

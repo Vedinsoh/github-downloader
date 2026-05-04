@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import type { FetchError } from "@/lib/github/client";
-import { fetchReleasesChunk, fetchReleaseByTagRaw } from "@/lib/github/client";
+import { fetchLatestRelease, fetchReleasesChunk, fetchReleaseByTagRaw } from "@/lib/github/client";
 import { computeLatestStable } from "./latest-stable";
 import { mergeReleases } from "./merge";
 import { getJSON, repoReleasesKey, repoTagsKey, setJSON, UnavailableError } from "./redis";
@@ -39,14 +39,25 @@ async function loadOrSeedBlob(
 ): Promise<{ ok: true; blob: StoredReleaseSet } | { ok: false; error: FetchError }> {
   if (existing) return { ok: true, blob: existing };
 
-  const fetched = await fetchReleasesChunk(owner, repo, 1);
-  if (!fetched.ok) return fetched;
+  const [chunkResult, latestResult] = await Promise.all([
+    fetchReleasesChunk(owner, repo, 1),
+    fetchLatestRelease(owner, repo),
+  ]);
+  if (!chunkResult.ok) return chunkResult;
 
-  const stored = fetched.data.releases.map(toStored);
+  const chunkStored = chunkResult.data.releases.map(toStored);
+  let releases = chunkStored;
+  if (latestResult.ok) {
+    const latestStored = toStored(latestResult.data);
+    if (!chunkStored.some((r) => r.tag === latestStored.tag)) {
+      releases = mergeReleases([latestStored], chunkStored);
+    }
+  }
+
   const blob: StoredReleaseSet = {
     chunks: 1,
-    releases: stored,
-    hasMore: fetched.data.hasMore,
+    releases,
+    hasMore: chunkResult.data.hasMore,
     fetchedAt: Date.now(),
   };
   await setJSON(repoReleasesKey(owner, repo), blob);
@@ -55,7 +66,7 @@ async function loadOrSeedBlob(
   await syncTagsIndex(
     owner,
     repo,
-    stored.map((r) => r.tag),
+    releases.map((r) => r.tag),
   );
 
   return { ok: true, blob };
@@ -96,9 +107,8 @@ async function getReleasesPageInner(
     const needed = page * PAGE_SIZE;
     const latestStable = computeLatestStable(blob.releases);
     const haveEnough = filtered.length >= needed;
-    const stableSatisfied = latestStable !== null || !blob.hasMore;
 
-    if (haveEnough && stableSatisfied) {
+    if (haveEnough) {
       return {
         ok: true,
         releases: slice.releases,

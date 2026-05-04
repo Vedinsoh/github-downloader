@@ -5,6 +5,7 @@ import { redirect, notFound } from "next/navigation";
 import { ownerSchema, repoSchema } from "@/lib/parse-input";
 import { fetchRepo } from "@/lib/github/client";
 import { getReleasesPage } from "@/lib/store/releases";
+import { hydrateForRender, hydrateRelease } from "@/lib/build-download-url";
 import { detectDeviceClassFromUserAgent, detectOsFromUserAgent } from "@/lib/detect-os";
 import { ReleaseCard } from "@/components/release-card";
 import { RepoHeader } from "@/components/repo-header";
@@ -113,9 +114,11 @@ export default async function RepoPage({
   const visitorOs = detectOsFromUserAgent(ua);
   const deviceClass = detectDeviceClassFromUserAgent(ua);
   const { releases, hasMore, latestStable } = releasesResult;
+  const renderReleases = hydrateForRender(owner, repo, releases);
+  const renderLatestStable = latestStable ? hydrateRelease(owner, repo, latestStable) : null;
 
   const ownerRepo = `${owner}/${repo}`;
-  const heroRelease = latestStable ?? releases[0] ?? null;
+  const heroRelease = renderLatestStable ?? renderReleases[0] ?? null;
   const jsonLd =
     heroRelease && heroRelease.assets[0]
       ? {
@@ -137,12 +140,12 @@ export default async function RepoPage({
 
         <BetaToggle />
 
-        {releases.length === 0 && page === 1 ? (
+        {renderReleases.length === 0 && page === 1 ? (
           <NoReleasesState />
         ) : (
           <>
             <section className="space-y-8">
-              {releases.map((release, i) => (
+              {renderReleases.map((release, i) => (
                 <React.Fragment key={release.tag}>
                   <ReleaseCard
                     release={release}
@@ -150,10 +153,14 @@ export default async function RepoPage({
                     repo={repo}
                     visitorOs={visitorOs}
                     deviceClass={deviceClass}
-                    latest={page === 1 && latestStable !== null && release.tag === latestStable.tag}
+                    latest={
+                      page === 1 &&
+                      renderLatestStable !== null &&
+                      release.tag === renderLatestStable.tag
+                    }
                   />
 
-                  {i === 0 && page === 1 && releases.length > 1 && (
+                  {i === 0 && page === 1 && renderReleases.length > 1 && (
                     <hr className="border-muted-foreground/10 border-t" />
                   )}
                 </React.Fragment>

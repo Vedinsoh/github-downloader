@@ -1,7 +1,6 @@
 import { Box } from "lucide-react";
 import { IconType } from "react-icons";
 import { FaAndroid, FaApple, FaLinux, FaWindows } from "react-icons/fa";
-import type { StoredAsset } from "./store/schemas";
 
 export type Os = "windows" | "mac" | "linux" | "android" | "ios" | "unknown";
 export type Architecture = "arm64" | "x64" | "x86" | "universal" | "unknown";
@@ -14,16 +13,21 @@ export type ClassifiedAsset = {
   isCli: boolean;
 };
 
-export type ReleaseItem = { asset: StoredAsset; info: ClassifiedAsset };
+type AssetLike = { name: string };
 
-export type ClassifiedRelease =
+export type ReleaseItem<A extends AssetLike = AssetLike> = {
+  asset: A;
+  info: ClassifiedAsset;
+};
+
+export type ClassifiedRelease<A extends AssetLike = AssetLike> =
   | { mode: "empty" }
-  | { mode: "archive-primary"; archives: ReleaseItem[] }
+  | { mode: "archive-primary"; archives: ReleaseItem<A>[] }
   | {
       mode: "os-build";
-      primary: ReleaseItem | null;
-      sameOsSiblings: ReleaseItem[];
-      others: ReleaseItem[];
+      primary: ReleaseItem<A> | null;
+      sameOsSiblings: ReleaseItem<A>[];
+      others: ReleaseItem<A>[];
     };
 
 const SIBLING_CHIP_LIMIT = 3;
@@ -64,13 +68,16 @@ function archRank(os: Os, arch: Architecture): number {
   return rank === -1 ? ARCH_RANK[os].length : rank;
 }
 
-function sortByArchPopularity(os: Os) {
-  return (a: ReleaseItem, b: ReleaseItem) =>
+function sortByArchPopularity<A extends AssetLike>(os: Os) {
+  return (a: ReleaseItem<A>, b: ReleaseItem<A>) =>
     archRank(os, a.info.architecture) - archRank(os, b.info.architecture);
 }
 
-export function classifyRelease(assets: StoredAsset[], visitorOs: Os): ClassifiedRelease {
-  const all: ReleaseItem[] = assets
+export function classifyRelease<A extends AssetLike>(
+  assets: A[],
+  visitorOs: Os,
+): ClassifiedRelease<A> {
+  const all: ReleaseItem<A>[] = assets
     .map((asset) => ({ asset, info: classifyAsset(asset.name) }))
     .filter((e) => !e.info.isSkippable);
 
@@ -113,7 +120,7 @@ export function classifyRelease(assets: StoredAsset[], visitorOs: Os): Classifie
   };
 }
 
-function applyCliExclusion(items: ReleaseItem[]): ReleaseItem[] {
+function applyCliExclusion<A extends AssetLike>(items: ReleaseItem<A>[]): ReleaseItem<A>[] {
   const hasNonCli = items.some((e) => !e.info.isCli);
   if (!hasNonCli) return items;
 
@@ -127,7 +134,7 @@ function applyCliExclusion(items: ReleaseItem[]): ReleaseItem[] {
   });
 }
 
-function applyTarballExclusion(items: ReleaseItem[]): ReleaseItem[] {
+function applyTarballExclusion<A extends AssetLike>(items: ReleaseItem<A>[]): ReleaseItem<A>[] {
   const hasNonTarball = items.some((e) => !isTarball(e.asset.name));
   if (!hasNonTarball) return items;
 
@@ -275,6 +282,9 @@ export function getOtherDownloadsOrder(deviceClass: DeviceClass, visitorOs: Os):
   return [visitorOs, ...base.filter((os) => os !== visitorOs)];
 }
 
-export function sortItemsByArch(items: ReleaseItem[], os: Os): ReleaseItem[] {
-  return [...items].sort(sortByArchPopularity(os));
+export function sortItemsByArch<A extends AssetLike>(
+  items: ReleaseItem<A>[],
+  os: Os,
+): ReleaseItem<A>[] {
+  return [...items].sort(sortByArchPopularity<A>(os));
 }

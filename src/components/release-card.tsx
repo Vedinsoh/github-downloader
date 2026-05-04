@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { type DeviceClass, type Os } from "@/lib/classify-asset";
-import type { StoredRelease } from "@/lib/store/schemas";
+import type { RenderRelease } from "@/lib/build-download-url";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ReleaseAssets } from "./release-assets";
@@ -12,7 +12,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
 type Props = {
-  release: StoredRelease;
+  release: RenderRelease;
   owner: string;
   repo: string;
   visitorOs: Os;

@@ -1,7 +1,7 @@
 import type { StoredRelease, StoredReleaseSet } from "./schemas";
 
 export const PAGE_SIZE = 10;
-export const CHUNK_SIZE = 30;
+export const CHUNK_SIZE = 20;
 
 export type SliceResult = {
   releases: StoredRelease[];

@@ -9,10 +9,10 @@ import {
   type Os,
 } from "@/lib/classify-asset";
 import { formatBytes } from "@/lib/format";
-import type { StoredAsset } from "@/lib/store/schemas";
+import type { RenderAsset } from "@/lib/build-download-url";
 import { DownloadButton } from "./download-button";
 
-type Item = { asset: StoredAsset; info: ClassifiedAsset };
+type Item = { asset: RenderAsset; info: ClassifiedAsset };
 
 export function OtherDownloads({
   items,

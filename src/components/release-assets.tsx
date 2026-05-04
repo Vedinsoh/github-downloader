@@ -8,13 +8,13 @@ import {
   type Os,
 } from "@/lib/classify-asset";
 import { formatBytes } from "@/lib/format";
-import type { StoredAsset } from "@/lib/store/schemas";
+import type { RenderAsset } from "@/lib/build-download-url";
 import { DownloadButton } from "./download-button";
 import { OtherDownloads } from "./other-downloads";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 type Props = {
-  assets: StoredAsset[];
+  assets: RenderAsset[];
   visitorOs: Os;
   deviceClass: DeviceClass;
   repo: string;

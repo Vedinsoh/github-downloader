@@ -17,7 +17,7 @@ describe("mergeReleases", () => {
   it("incoming wins on duplicate tag", () => {
     const existing = [rel("v1", "2026-01-01T00:00:00Z")];
     const incoming = [
-      { ...rel("v1", "2026-03-01T00:00:00Z"), assets: [{ name: "x", size: 1, url: "u" }] },
+      { ...rel("v1", "2026-03-01T00:00:00Z"), assets: [{ name: "x", size: 1 }] },
     ];
     const merged = mergeReleases(existing, incoming);
     expect(merged).toHaveLength(1);

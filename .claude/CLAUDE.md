@@ -186,6 +186,11 @@ OS detection from `User-Agent` header on server. Asset classification from filen
 
 Upstash exposes only Eviction: ON/OFF — the underlying algorithm is `optimistic-volatile` (volatile-random + allkeys-random). Every key we write has a 7-day TTL, so the entire keyspace sits in the volatile pool — exactly what `optimistic-volatile` evicts first. We accept that some popular entries may be evicted under pressure; cold-load via `getReleasesPage` re-populates from GitHub. OOM on `SET` is soft-failed (request continues with in-memory data); we do not run a SCAN-and-delete loop.
 
+## Upstash free-tier limits
+
+- Storage: **256 MB** (cap monitored hourly by `/api/internal/redis-health` against `used_memory`).
+- Commands: **500,000/month** (≈16.6k/day average). The legacy 10k/day cap was retired 2025-03-12; only the monthly budget applies. See https://upstash.com/blog/redis-new-pricing.
+
 ## Asset classifier — how to extend
 
 `src/lib/classify-asset.ts` regexes are **order-sensitive** (first match wins inside `detectOs`). When adding a new pattern:

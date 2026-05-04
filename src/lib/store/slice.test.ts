@@ -41,20 +41,12 @@ describe("sliceForPage", () => {
     expect(page2.hasMore).toBe(false);
   });
 
-  it("never reads beyond chunks * 30 (singletons invisible to pagination)", () => {
-    // 5 in-chunk + 1 singleton beyond chunks*30
-    const inChunk = Array.from({ length: 5 }, (_, i) => rel(`v${i}`));
-    const singleton = rel("singleton");
-    const set = blob([...inChunk, singleton], 1);
-    // chunks=1 means visible window is 30; both fit, so singleton WOULD be visible if 0..30 used
-    // Plan says: never beyond chunks*30 — with chunks=1 window is 30, both fit.
-    // Test the more meaningful case: if we have 35 entries but chunks=1, only first 30 visible.
-    const many = Array.from({ length: 35 }, (_, i) => rel(`v${i}`));
-    const set2 = blob(many, 1);
-    const result = sliceForPage(set2, 1, 100, true);
-    expect(result.releases).toHaveLength(30);
-    expect(result.releases.map((r) => r.tag)).not.toContain("v30");
-    void set;
-    void singleton;
+  it("never reads beyond chunks * CHUNK_SIZE (singletons invisible to pagination)", () => {
+    // 25 entries but chunks=1 (CHUNK_SIZE=20) — only first 20 visible.
+    const many = Array.from({ length: 25 }, (_, i) => rel(`v${i}`));
+    const set = blob(many, 1);
+    const result = sliceForPage(set, 1, 100, true);
+    expect(result.releases).toHaveLength(20);
+    expect(result.releases.map((r) => r.tag)).not.toContain("v20");
   });
 });
