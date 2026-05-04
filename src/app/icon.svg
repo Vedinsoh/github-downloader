@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <mask id="m">
+      <rect width="200" height="200" fill="white"/>
+      <circle cx="66" cy="55" r="16" fill="black"/>
+      <circle cx="134" cy="55" r="16" fill="black"/>
+      <path d="M66 67 C66 91 100 83 100 91" stroke="black" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <path d="M134 67 C134 91 100 83 100 91" stroke="black" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <circle cx="100" cy="102" r="16" fill="black"/>
+      <path d="M94 114 L94 139 L76 139 L100 164 L124 139 L106 139 L106 114 Z" fill="black"/>
+    </mask>
+    <style>
+      .bg { fill: #1f2328; }
+      @media (prefers-color-scheme: dark) { .bg { fill: #ffffff; } }
+    </style>
+  </defs>
+  <circle class="bg" cx="100" cy="100" r="92" mask="url(#m)"/>
+</svg>

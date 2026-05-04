@@ -8,25 +8,7 @@ import { cn } from "@/lib/utils";
 import { FaGithub } from "react-icons/fa";
 import { links } from "@/lib/constants/links";
 import { NavbarRepoInput } from "@/components/navbar-repo-input";
-
-// Simple logo component for the navbar
-const Logo = (props: React.SVGAttributes<SVGElement>) => {
-  return (
-    <svg
-      aria-label="Logo"
-      role="img"
-      fill="none"
-      height="1em"
-      viewBox="0 0 324 323"
-      width="1em"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <rect fill="currentColor" height="323" rx="161.5" width="323" x="0.5" />
-      <circle cx="162" cy="161.5" fill="white" r="60" className="dark:fill-black" />
-    </svg>
-  );
-};
+import { Logo } from "./ui/logo";
 
 const Title = () => (
   <div className="hidden text-xl lg:inline-block">
