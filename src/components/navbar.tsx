@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -56,13 +55,12 @@ export interface NavbarProps extends React.HTMLAttributes<HTMLElement> {
   ctaHref?: string;
   onSignInClick?: () => void;
   onCtaClick?: () => void;
+  showSearch?: boolean;
 }
 
 export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
-  ({ className, logo = <Logo />, logoHref = "/", ...props }, ref) => {
+  ({ className, logo = <Logo />, logoHref = "/", showSearch = true, ...props }, ref) => {
     const containerRef = useRef<HTMLElement>(null);
-    const pathname = usePathname();
-    const showRepoInput = pathname !== "/";
 
     // Combine refs
     const combinedRef = React.useCallback(
@@ -101,7 +99,7 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
             </div>
           </div>
           {/* Middle: repo input — in-flow on md/lg (avoids overlap), absolutely viewport-centered on xl+ to match main content width */}
-          {showRepoInput ? (
+          {showSearch ? (
             <div
               className={cn(
                 "hidden items-center",

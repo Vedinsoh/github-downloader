@@ -52,19 +52,22 @@ with `?beta=show` are `noindex`.
 ```
 src/
   app/
-    layout.tsx                       root layout, fonts, analytics, theme script
-    page.tsx                         homepage (hero + form)
+    layout.tsx                       root layout, fonts, analytics, theme script (no navbar)
+    not-found.tsx                    global 404 page (renders <Navbar showSearch={false} />)
     actions.ts                       server action: parse paste → redirect
-    repo-link-form.tsx               client form (useActionState)
-    [owner]/[repo]/page.tsx          releases list, paginated, ?beta=show toggle
-    [owner]/[repo]/v/[version]/      version deep-link page (noindex)
+    (home)/layout.tsx                <Navbar showSearch={false} /> wrapper
+    (home)/page.tsx                  homepage (hero + form)
+    (app)/layout.tsx                 <Navbar /> wrapper (search visible)
+    (app)/[owner]/[repo]/page.tsx    releases list, paginated, ?beta=show toggle
+    (app)/[owner]/[repo]/v/[version]/ version deep-link page (noindex)
+    (app)/about|privacy|terms/page.tsx static legal pages
     og/route.tsx                     OG image (Edge ImageResponse, no version)
     api/internal/redis-health/       hourly cron health check (Bearer auth)
-    about|privacy|terms/page.tsx     static legal pages
     robots.ts                        robots.txt generator
   components/
     ui/                              shadcn primitives
     site-footer.tsx
+    repo-link-form.tsx               client form (useActionState), used by homepage + not-found
     repo-header.tsx
     release-card.tsx                 orchestrates per-release UI
     download-button.tsx              client; fires download_click
@@ -113,6 +116,7 @@ Invalid → `notFound()`. Reserved owner names → `notFound()`.
 - Missing tag on `/v/{version}`, confirmed against complete tags-index → VersionNotFoundState (zero GH calls)
 - Redis read failure → TemporarilyUnavailableState (hard-fail)
 - Redis write failure → soft-fail; request continues with in-memory data (logged)
+- Hard 404 (invalid route, reserved owner names, invalid version syntax) → `app/not-found.tsx`
 
 ### UX
 

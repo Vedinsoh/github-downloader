@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRepoLinkForm } from "./use-repo-link-form";
+import { useRepoLinkForm } from "@/app/use-repo-link-form";
 
 export function RepoLinkForm() {
   const { formAction, pending, error, isInvalid, value, onChange, onBlur, onSubmit, formRef } =

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { RepoLinkForm } from "./repo-link-form";
+import { RepoLinkForm } from "@/components/repo-link-form";
 import { SiteFooter } from "@/components/site-footer";
 
 export default function HomePage() {
