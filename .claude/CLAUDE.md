@@ -89,8 +89,9 @@ src/
       to-stored.ts                   Release → StoredRelease (drops fields, filters skippables)
       merge.ts                       merge-by-tag, sort by date desc
       slice.ts                       windowed pagination over chunks*30
-      latest-stable.ts               first non-prerelease in input order
-      releases.ts                    getReleasesPage + getReleaseByTag (unstable_cache + Redis + GH)
+      latest-stable.ts               computeLatestStable + pickLatest (stable-first, then any)
+      releases.ts                    getReleasesPage + getReleaseByTag + getOrSeedBlob
+      resolve-latest.ts              resolveLatestTag (alias for /v/latest)
       tags-index.ts                  getTagsIndex + buildTagsIndex + mergeNewTags
   proxy.ts                           Next.js 16 "proxy" (was middleware) — rate limiter
 ```
@@ -105,6 +106,13 @@ Catch-all `[owner]/[repo]` validates against:
 - `versionSchema` (1..255, no control chars)
 
 Invalid → `notFound()`. Reserved owner names → `notFound()`.
+
+`/v/latest` is a reserved alias (case-insensitive). It resolves against the
+releases blob via `resolveLatestTag` — preferring the latest non-prerelease,
+falling back to the first release if every release is a prerelease — then
+emits a 307 redirect to `/v/{tag}`. Real release tags literally named `latest`
+are shadowed; this is acceptable for our audience. Paste-input recognizes
+`https://github.com/{owner}/{repo}/releases/latest` and routes to the alias.
 
 ### Errors (handled in releases page)
 
@@ -241,4 +249,4 @@ Full version with detailed steps lives in `NEXT_STEPS.md`. Quick form:
 - [ ] Configure `info@githubdl.com` forwarding (ImprovMX)
 - [ ] Add `githubdl.com` apex + `www` redirect in Vercel domains
 - [ ] Verify Web Analytics + Speed Insights collecting in dashboard
-- [ ] Smoke test: `/redis/redis`, `/godotengine/godot`, `/obsidianmd/obsidian`, `/oven-sh/bun`, a known-archived repo, a known-renamed repo, a 404 repo, `/v/{valid-tag}` deep-link, `/v/{invalid-tag}` deep-link
+- [ ] Smoke test: `/redis/redis`, `/godotengine/godot`, `/obsidianmd/obsidian`, `/oven-sh/bun`, a known-archived repo, a known-renamed repo, a 404 repo, `/v/{valid-tag}` deep-link, `/v/{invalid-tag}` deep-link, `/v/latest` (cold cache + warm cache), pasting a `/releases/latest` URL on the homepage

@@ -6,3 +6,7 @@ export function computeLatestStable(releases: StoredRelease[]): StoredRelease | 
   }
   return null;
 }
+
+export function pickLatest(releases: StoredRelease[]): StoredRelease | null {
+  return computeLatestStable(releases) ?? releases[0] ?? null;
+}

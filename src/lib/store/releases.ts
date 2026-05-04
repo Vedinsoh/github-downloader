@@ -32,6 +32,23 @@ async function readBlob(owner: string, repo: string): Promise<StoredReleaseSet |
   return parsed.success ? parsed.data : null;
 }
 
+export type GetOrSeedBlobResult =
+  | { ok: true; blob: StoredReleaseSet }
+  | { ok: false; error: FetchError | { kind: "unavailable" } };
+
+export async function getOrSeedBlob(owner: string, repo: string): Promise<GetOrSeedBlobResult> {
+  let initial: StoredReleaseSet | null;
+  try {
+    initial = await readBlob(owner, repo);
+  } catch (err) {
+    if (err instanceof UnavailableError) {
+      return { ok: false, error: { kind: "unavailable" } };
+    }
+    throw err;
+  }
+  return loadOrSeedBlob(owner, repo, initial);
+}
+
 async function loadOrSeedBlob(
   owner: string,
   repo: string,
@@ -86,17 +103,7 @@ async function getReleasesPageInner(
   page: number,
   includeBetas: boolean,
 ): Promise<GetReleasesPageResult> {
-  let initial: StoredReleaseSet | null;
-  try {
-    initial = await readBlob(owner, repo);
-  } catch (err) {
-    if (err instanceof UnavailableError) {
-      return { ok: false, error: { kind: "unavailable" } };
-    }
-    throw err;
-  }
-
-  const seeded = await loadOrSeedBlob(owner, repo, initial);
+  const seeded = await getOrSeedBlob(owner, repo);
   if (!seeded.ok) return { ok: false, error: seeded.error };
   let blob: StoredReleaseSet = seeded.blob;
 

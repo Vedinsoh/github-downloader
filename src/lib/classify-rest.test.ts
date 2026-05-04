@@ -28,8 +28,12 @@ describe("classifyRest", () => {
     });
   });
 
-  it("/releases/latest is not a version", () => {
-    expect(classifyRest(["releases", "latest"])).toEqual({});
+  it("/releases/latest returns latest alias", () => {
+    expect(classifyRest(["releases", "latest"])).toEqual({ version: "latest" });
+  });
+
+  it("/releases/Latest is case-insensitive", () => {
+    expect(classifyRest(["releases", "Latest"])).toEqual({ version: "latest" });
   });
 
   it("/v/{x} returns version", () => {

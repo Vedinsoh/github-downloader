@@ -17,6 +17,10 @@ export function classifyRest(rest: string[]): RestClassification {
     }
   }
 
+  if (head === "releases" && rest.length >= 2 && rest[1].toLowerCase() === "latest") {
+    return { version: "latest" };
+  }
+
   if (head === "v" && rest.length >= 2) {
     const candidate = rest[1];
     if (versionSchema.safeParse(candidate).success) {

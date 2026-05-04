@@ -29,8 +29,8 @@ describe("parseRepoInput", () => {
       "redis",
       "v8.0.1",
     ));
-  it("accepts /releases/latest with no version", () =>
-    ok("https://github.com/redis/redis/releases/latest", "redis", "redis"));
+  it("accepts /releases/latest as latest alias", () =>
+    okVersion("https://github.com/redis/redis/releases/latest", "redis", "redis", "latest"));
   it("accepts /issues suffix with no version", () =>
     ok("https://github.com/redis/redis/issues", "redis", "redis"));
   it("accepts .git suffix", () => ok("https://github.com/redis/redis.git", "redis", "redis"));

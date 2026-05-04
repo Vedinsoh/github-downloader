@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeLatestStable } from "./latest-stable";
+import { computeLatestStable, pickLatest } from "./latest-stable";
 import type { StoredRelease } from "./schemas";
 
 function rel(tag: string, pre = false): StoredRelease {
@@ -18,5 +18,21 @@ describe("computeLatestStable", () => {
 
   it("empty list returns null", () => {
     expect(computeLatestStable([])).toBeNull();
+  });
+});
+
+describe("pickLatest", () => {
+  it("prefers stable when present", () => {
+    const result = pickLatest([rel("v3", true), rel("v2", false), rel("v1", true)]);
+    expect(result?.tag).toBe("v2");
+  });
+
+  it("falls back to first when all prerelease", () => {
+    const result = pickLatest([rel("v3", true), rel("v2", true)]);
+    expect(result?.tag).toBe("v3");
+  });
+
+  it("empty list returns null", () => {
+    expect(pickLatest([])).toBeNull();
   });
 });

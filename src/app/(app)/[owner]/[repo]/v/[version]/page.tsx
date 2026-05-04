@@ -4,12 +4,14 @@ import { redirect, notFound } from "next/navigation";
 import { ownerSchema, repoSchema, versionSchema } from "@/lib/parse-input";
 import { fetchRepo } from "@/lib/github/client";
 import { getReleaseByTag } from "@/lib/store/releases";
+import { resolveLatestTag } from "@/lib/store/resolve-latest";
 import { hydrateRelease } from "@/lib/build-download-url";
 import { detectDeviceClassFromUserAgent, detectOsFromUserAgent } from "@/lib/detect-os";
 import { ReleaseCard } from "@/components/release-card";
 import { RepoHeader } from "@/components/repo-header";
 import {
   BusyState,
+  NoReleasesState,
   NotFoundState,
   TemporarilyUnavailableState,
   VersionNotFoundState,
@@ -48,6 +50,28 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
       redirect(`/${repoResult.error.owner}/${repoResult.error.repo}/v/${version}`);
     }
     return renderError(owner, repo, repoResult.error.kind);
+  }
+
+  if (tag.toLowerCase() === "latest") {
+    const resolved = await resolveLatestTag(owner, repo);
+    if (resolved.ok) {
+      redirect(`/${owner}/${repo}/v/${encodeURIComponent(resolved.tag)}`);
+    }
+    if (resolved.error.kind === "no_releases") {
+      return (
+        <>
+          <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
+            <RepoHeader repo={repoResult.data} />
+            <NoReleasesState />
+          </main>
+          <SiteFooter />
+        </>
+      );
+    }
+    if (resolved.error.kind === "moved") {
+      redirect(`/${resolved.error.owner}/${resolved.error.repo}/v/latest`);
+    }
+    return renderError(owner, repo, resolved.error.kind);
   }
 
   const releaseResult = await getReleaseByTag(owner, repo, tag);
