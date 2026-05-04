@@ -3,7 +3,14 @@ import type { FetchError } from "@/lib/github/client";
 import { fetchLatestRelease, fetchReleasesChunk, fetchReleaseByTagRaw } from "@/lib/github/client";
 import { computeLatestStable } from "./latest-stable";
 import { mergeReleases } from "./merge";
-import { getJSON, repoReleasesKey, repoTagsKey, setJSON, UnavailableError } from "./redis";
+import {
+  getJSON,
+  repoCacheTag,
+  repoReleasesKey,
+  repoTagsKey,
+  setJSON,
+  UnavailableError,
+} from "./redis";
 import { storedReleaseSetSchema, type StoredRelease, type StoredReleaseSet } from "./schemas";
 import { CHUNK_SIZE, PAGE_SIZE, sliceForPage } from "./slice";
 import { ensureTagsIndex, getTagsIndex, mergeNewTags } from "./tags-index";
@@ -162,10 +169,12 @@ export async function getReleasesPage(
   page: number,
   includeBetas: boolean,
 ): Promise<GetReleasesPageResult> {
+  const o = owner.toLowerCase();
+  const r = repo.toLowerCase();
   const cached = unstable_cache(
     async () => getReleasesPageInner(owner, repo, page, includeBetas),
-    ["releases", owner, repo, String(page), String(includeBetas)],
-    { revalidate: CACHE_TTL_SECONDS, tags: [`repo:${owner}/${repo}`] },
+    ["releases", o, r, String(page), String(includeBetas)],
+    { revalidate: CACHE_TTL_SECONDS, tags: [repoCacheTag(owner, repo)] },
   );
   return cached();
 }
@@ -215,10 +224,13 @@ export async function getReleaseByTag(
   repo: string,
   tag: string,
 ): Promise<GetReleaseByTagResult> {
+  const o = owner.toLowerCase();
+  const r = repo.toLowerCase();
+  // Tag names are case-sensitive in Git — never lowercase `tag`.
   const cached = unstable_cache(
     async () => getReleaseByTagInner(owner, repo, tag),
-    ["release-tag", owner, repo, tag],
-    { revalidate: CACHE_TTL_SECONDS, tags: [`repo:${owner}/${repo}`] },
+    ["release-tag", o, r, tag],
+    { revalidate: CACHE_TTL_SECONDS, tags: [repoCacheTag(owner, repo)] },
   );
   return cached();
 }

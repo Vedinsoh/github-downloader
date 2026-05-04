@@ -52,6 +52,15 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
     return renderError(owner, repo, repoResult.error.kind);
   }
 
+  const canonicalOwner = repoResult.data.owner.login;
+  const canonicalRepo = repoResult.data.name;
+  if (
+    (owner !== canonicalOwner && owner.toLowerCase() === canonicalOwner.toLowerCase()) ||
+    (repo !== canonicalRepo && repo.toLowerCase() === canonicalRepo.toLowerCase())
+  ) {
+    redirect(`/${canonicalOwner}/${canonicalRepo}/v/${version}`);
+  }
+
   if (tag.toLowerCase() === "latest") {
     const resolved = await resolveLatestTag(owner, repo);
     if (resolved.ok) {

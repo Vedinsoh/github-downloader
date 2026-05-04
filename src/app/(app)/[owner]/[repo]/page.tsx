@@ -102,6 +102,16 @@ export default async function RepoPage({
     return renderError(owner, repo, repoResult.error.kind);
   }
 
+  const canonicalOwner = repoResult.data.owner.login;
+  const canonicalRepo = repoResult.data.name;
+  if (
+    (owner !== canonicalOwner && owner.toLowerCase() === canonicalOwner.toLowerCase()) ||
+    (repo !== canonicalRepo && repo.toLowerCase() === canonicalRepo.toLowerCase())
+  ) {
+    const qs = buildQueryString(sp);
+    redirect(`/${canonicalOwner}/${canonicalRepo}${qs}`);
+  }
+
   const releasesResult = await getReleasesPage(owner, repo, page, includeBetas);
   if (!releasesResult.ok) {
     if (releasesResult.error.kind === "moved") {
@@ -248,4 +258,12 @@ function clampPage(raw: string | undefined): number | null {
   const n = Number(raw);
   if (!Number.isInteger(n) || n < 1 || n > MAX_PAGE) return null;
   return n;
+}
+
+function buildQueryString(sp: SearchParams): string {
+  const params = new URLSearchParams();
+  if (sp.page) params.set("page", sp.page);
+  if (sp.beta) params.set("beta", sp.beta);
+  const s = params.toString();
+  return s ? `?${s}` : "";
 }

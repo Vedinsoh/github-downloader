@@ -98,9 +98,13 @@ function logRedisWriteFailure(key: string, err: unknown) {
 }
 
 export function repoReleasesKey(owner: string, repo: string): string {
-  return `repo:${owner}/${repo}:releases`;
+  return `repo:${owner.toLowerCase()}/${repo.toLowerCase()}:releases`;
 }
 
 export function repoTagsKey(owner: string, repo: string): string {
-  return `repo:${owner}/${repo}:tags`;
+  return `repo:${owner.toLowerCase()}/${repo.toLowerCase()}:tags`;
+}
+
+export function repoCacheTag(owner: string, repo: string): string {
+  return `repo:${owner.toLowerCase()}/${repo.toLowerCase()}`;
 }

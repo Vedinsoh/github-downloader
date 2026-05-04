@@ -56,7 +56,7 @@ export function isFetchError(v: Response | FetchError): v is FetchError {
 export async function fetchRepo(owner: string, repo: string): Promise<FetchResult<Repo>> {
   const res = await ghFetch(`/repos/${owner}/${repo}`, {
     revalidate: 21600,
-    tags: [`repo:${owner}/${repo}`],
+    tags: [`repo:${owner.toLowerCase()}/${repo.toLowerCase()}`],
   });
   if (isFetchError(res)) return { ok: false, error: res };
 
