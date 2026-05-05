@@ -1,8 +1,10 @@
 name = "githubdl"
-main = "worker.ts"
+main = ".open-next/worker.js"
 compatibility_date = "2025-05-05"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
-workers_dev = false
+# Enabled during pre-launch smoke testing. Flip to false after the
+# Workers Route on githubdl.com/* is wired up to disable the *.workers.dev URL.
+workers_dev = true
 
 [assets]
 directory = ".open-next/assets"
@@ -20,18 +22,23 @@ service = "githubdl"
 # KV — application data store (releases blob, tags index)
 [[kv_namespaces]]
 binding = "KV_RELEASES"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "e7249552cd274fc9b2d1732541ebfb19"
+preview_id = "dcc5c5c2c6724096872bcad40ee60c68"
 
 # R2 — OpenNext incremental cache
+# Binding name MUST be NEXT_INC_CACHE_R2_BUCKET — hardcoded in
+# @opennextjs/cloudflare's r2-incremental-cache override.
 [[r2_buckets]]
 binding = "NEXT_INC_CACHE_R2_BUCKET"
 bucket_name = "githubdl-inc-cache"
 
 # D1 — OpenNext tag cache
+# Binding name MUST be NEXT_TAG_CACHE_D1 — hardcoded in
+# @opennextjs/cloudflare's d1-next-tag-cache override.
 [[d1_databases]]
 binding = "NEXT_TAG_CACHE_D1"
 database_name = "githubdl-tag-cache"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "0e085d3e-4b3e-4611-acd9-12e533d1ab62"
 
 # Durable Objects — OpenNext revalidation queue
 [[durable_objects.bindings]]

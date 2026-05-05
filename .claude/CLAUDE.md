@@ -56,14 +56,13 @@ with `?beta=show` are `noindex`.
 ### File map
 
 ```
-worker.ts                            Worker entry shim — rate limit + verified-bot bypass, then OpenNext
-worker-env.d.ts                      ambient types for the OpenNext-generated worker bundle
 open-next.config.ts                  OpenNext config — R2 incremental, DO queue, D1 tag cache
-wrangler.toml                        Wrangler config — bindings, DO migrations, rate-limit namespaces
+wrangler.toml                        Wrangler config — bindings, DO migrations, rate-limit namespaces (main = ".open-next/worker.js")
 src/
   app/
     layout.tsx                       root layout, fonts, CF Web Analytics beacon, theme script
     not-found.tsx                    global 404 page
+  middleware.ts                      Next 15-style middleware — rate limit + verified-bot bypass via getCloudflareContext()
     actions.ts                       server action: parse paste → redirect
     (home)/layout.tsx                <Navbar showSearch={false} /> wrapper
     (home)/page.tsx                  homepage (hero + form)
@@ -166,16 +165,21 @@ OS detection from `User-Agent` header on server. Asset classification from filen
 
 ### Rate limit & abuse
 
-`worker.ts` (Worker entry shim) runs before OpenNext on every request:
+`src/middleware.ts` (Next 15-style middleware) runs before page handlers on every matched request. Lives inside Next's middleware stage, NOT as a custom Worker entry shim — OpenNext's deploy flow rebuilds `.open-next/worker.js` and a custom entry would have to re-export OpenNext's Durable Object classes through the bundle, which doesn't survive esbuild's re-export resolution cleanly.
 
-1. Read `request.cf.botManagement.verifiedBot` — if true, skip both limiters.
-2. Else key by `CF-Connecting-IP` → check `RATE_LIMIT_GENERAL` (60/60s).
-3. For paths matching `/^/[^/]+/[^/]+/v//`, additionally check `RATE_LIMIT_VERSION` (10/60s).
-4. On `success: false` → 429 with `Cache-Control: no-store`.
+Behavior:
 
-Workers `RateLimit` bindings are eventually-consistent and node-local — fine for our threat model. A second layer of WAF Rate Limiting Rule (1 free slot, 10s window, IP) provides edge-side redundancy before the Worker even runs.
+1. `getCloudflareContext().env` — when bindings absent (e.g. `next dev`), middleware no-ops via `NextResponse.next()`.
+2. Read `request.cf.botManagement.verifiedBot` — if true, skip both limiters.
+3. Else key by `CF-Connecting-IP` → check `RATE_LIMIT_GENERAL` (60/60s).
+4. For paths matching `/^/[^/]+/[^/]+/v//`, additionally check `RATE_LIMIT_VERSION` (10/60s).
+5. On `success: false` → 429 with `Cache-Control: no-store`.
 
-In `pnpm dev` (Next dev mode without Wrangler), the rate limiter has no binding and is implicitly skipped by `worker.ts` — but `worker.ts` itself isn't executed in `next dev`. Use `pnpm dev:worker` to verify limiter behavior end-to-end.
+Matcher excludes `_next/`, `favicon.ico`, `robots.txt`, `sitemap.xml`, `icon.svg`, `og$` — same exclusion set we used to use in `proxy.ts`.
+
+A second layer of WAF Rate Limiting Rule (1 free slot, 10s window, IP) provides edge-side redundancy before the Worker even runs.
+
+In `pnpm dev`, `getCloudflareContext()` throws → caught → middleware returns `NextResponse.next()`. Use `pnpm dev:worker` to verify limiter behavior end-to-end.
 
 ## Decisions worth knowing
 
@@ -184,7 +188,7 @@ In `pnpm dev` (Next dev mode without Wrangler), the rate limiter has no binding 
 - **Cloudflare Workers Paid from day one.** $5/mo ceiling lifts (50 ms CPU, 10 MiB bundle, 10M req/mo). Free tier's 10 ms CPU + 3 MiB cap can't fit OpenNext + Next 16 + `ImageResponse`.
 - **Cloudflare KV over Upstash Redis.** Single-vendor, in-network (~5 ms reads vs ~30 ms cross-region HTTPS), eventually-consistent (≤60 s) acceptable for 7-day TTL data, free tier is generous.
 - **Application data (KV) and Next cache (R2) are separate concerns.** KV stores our domain blobs. R2 stores OpenNext's per-page cache entries. D1 records tag invalidation timestamps. Each layer can fail independently without taking down the others.
-- **Rate limit lives in Worker entry shim, not Next middleware.** The `RateLimit` binding is a Worker-level API; expressing it inside Next would require awkward bridging. OpenNext on Workers does not yet support Next 16's `proxy.ts` (issue opennextjs/opennextjs-cloudflare#962) — Worker-shim approach side-steps that constraint entirely.
+- **Rate limit lives in `src/middleware.ts` (Next 15-style middleware), not in a custom Worker entry shim.** Initial design used a `worker.ts` wrapper that imported `.open-next/worker.js` and re-exported `DOQueueHandler`, but workerd's bundle introspection doesn't reliably preserve re-exports of Durable Object classes through that chain — DO bindings start failing at runtime. Using Next's middleware seam keeps OpenNext's `main = ".open-next/worker.js"` intact and the DO bindings work. Next 16's `proxy.ts` rename is NOT yet supported by OpenNext (issue opennextjs/opennextjs-cloudflare#962); we deliberately use the legacy `middleware.ts` filename (which still builds in Next 16 with a deprecation warning) until #962 lands.
 - **No release notes / changelogs.** Audience is non-technical.
 - **Version deep-links not suppressed from share-link UX.** The mod-maker / forum-distribution use case relies on `/v/{version}` working, even though it's `noindex`.
 - **CF-native observability over Sentry.** Workers Logs + Workers Analytics Engine + Email Alerts cover our needs at zero added cost. Errors that matter already have explicit handling.
@@ -192,7 +196,7 @@ In `pnpm dev` (Next dev mode without Wrangler), the rate limiter has no binding 
 
 ## Build-time gotchas
 
-- **Do not rename `src/middleware.ts` → `src/proxy.ts`.** OpenNext on Workers does not yet recognize Next 16's `proxy` export (issue #962). We've removed Next-level middleware entirely; rate-limit logic lives in `worker.ts` instead.
+- **Do not rename `src/middleware.ts` → `src/proxy.ts`.** OpenNext on Workers does not yet recognize Next 16's `proxy` export (issue #962). The legacy `middleware.ts` filename is what OpenNext's middleware bundling expects; Next 16 still builds it (with a deprecation warning).
 - **`@opennextjs/cloudflare@1.19.6` requires `next@16.2.4` or higher within the 16.x line** (peer-deps exclude 16.0.0–16.2.2 due to a `loadManifest` regression in those versions). Don't bump Next ahead of OpenNext compat.
 - **`compatibility_flags` must include both `nodejs_compat` and `global_fetch_strictly_public`.** The latter is needed for OpenNext's caching path (per its template).
 - **`compatibility_date >= 2025-05-05`** for `FinalizationRegistry` support (used by OpenNext internals).
@@ -200,8 +204,8 @@ In `pnpm dev` (Next dev mode without Wrangler), the rate limiter has no binding 
 - **`generateMetadata` and the page receive `params` as a `Promise`** in Next 16 App Router — always `await` before destructuring. Same for `searchParams`.
 - **`useActionState` (not `useFormState`)** for the homepage form — React 19 API, `useFormState` is deprecated.
 - **shadcn `init` flags differ from older guides.** Use `-d -t next -b radix --yes --no-monorepo`. There is no `--base-color` flag anymore.
-- **`worker.ts` imports from `./.open-next/worker.js`**, which only exists after `opennextjs-cloudflare build`. The `worker-env.d.ts` ambient declaration keeps `tsc --noEmit` green when the artifact is absent.
-- **`KV_RELEASES` binding access uses `getCloudflareContext()`** from `@opennextjs/cloudflare`. In `next dev` (no Workers runtime) this returns null and `kv.ts` no-ops the same way the old Upstash wrapper did.
+- **No custom Worker entry shim.** `wrangler.toml` points `main = ".open-next/worker.js"` (OpenNext default). Custom wrapper at root broke DO export chain through wrangler's bundler.
+- **`KV_RELEASES` and `RATE_LIMIT_*` binding access uses `getCloudflareContext()`** from `@opennextjs/cloudflare`. In `next dev` (no Workers runtime) `getCloudflareContext()` throws — both `kv.ts` and `middleware.ts` catch and no-op the same way the old Upstash wrapper did.
 
 ## Caching contract
 
@@ -245,7 +249,7 @@ pnpm dev:worker   # opennextjs-cloudflare build && wrangler dev (full bindings v
 pnpm preview      # opennextjs-cloudflare build && wrangler dev --remote (against real CF resources)
 pnpm build        # next build (Next-side production build)
 pnpm build:worker # opennextjs-cloudflare build (produces .open-next/worker.js)
-pnpm deploy       # build:worker && wrangler deploy
+pnpm deploy:worker # build:worker && wrangler deploy (note: `deploy` alone is a reserved pnpm command)
 pnpm cf-typegen   # regenerate worker-configuration.d.ts from wrangler.toml bindings
 pnpm typecheck    # tsc --noEmit
 pnpm lint         # eslint

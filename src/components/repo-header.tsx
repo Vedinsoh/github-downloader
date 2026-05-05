@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { Repo } from "@/lib/github/schemas";
 import { Button } from "./ui/button";
 import { FaGithub } from "react-icons/fa";
@@ -18,13 +17,13 @@ export function RepoHeader({ repo }: { repo: Repo }) {
         </Card>
       ) : null}
       <div className="flex items-center gap-3">
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={repo.owner.avatar_url}
           alt=""
           width={36}
           height={36}
           className="rounded-full"
-          unoptimized
         />
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">
