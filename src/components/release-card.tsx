@@ -39,7 +39,7 @@ export function ReleaseCard({ release, owner, repo, visitorOs, deviceClass, late
       <CardHeader className="flex flex-row flex-wrap items-center gap-2">
         <div className="flex flex-1 items-center gap-2">
           <CardTitle className="text-xl">
-            <Link href={releaseLink} className="hover:underline">
+            <Link href={releaseLink} className="hover:underline" prefetch={false}>
               Version {versionLabel}
             </Link>
           </CardTitle>
