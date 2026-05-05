@@ -13,7 +13,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(links.app.url),
   title: {
-    default: `${links.app.name} — The easiest way to download GitHub files`,
+    default: `${links.app.name} — The easiest way to download GitHub apps`,
     template: `%s — ${links.app.name}`,
   },
   description: "Download programs from GitHub the easy way. Paste any repository link.",
