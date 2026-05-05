@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { repoCacheTag, repoReleasesKey, repoTagsKey } from "./redis";
+import { repoCacheTag, repoReleasesKey, repoTagsKey } from "./kv";
 
-describe("redis key builders", () => {
+describe("kv key builders", () => {
   it("repoReleasesKey lowercases owner and repo", () => {
     expect(repoReleasesKey("Redis", "Redis")).toBe("repo:redis/redis:releases");
     expect(repoReleasesKey("redis", "redis")).toBe(repoReleasesKey("Redis", "Redis"));

@@ -1,11 +1,16 @@
 import type { FetchError } from "@/lib/github/client";
 import { walkReleaseTags } from "@/lib/github/graphql";
 import { storedTagsIndexSchema, type StoredTagsIndex } from "./schemas";
-import { getJSON, repoTagsKey, setJSON } from "./redis";
+import { getJSON, repoTagsKey, setJSON } from "./kv";
 
 export type TagsIndexResult =
   | { ok: true; index: StoredTagsIndex }
   | { ok: false; error: FetchError };
+
+// 20 iterations × 100 tags per page = 2,000-tag coverage per request.
+// Beyond this, the index stays partial and unknown-tag lookups fall through to a
+// single REST call rather than burning more GraphQL budget on one request.
+const MAX_WALK_ITERATIONS = 20;
 
 export async function getTagsIndex(owner: string, repo: string): Promise<StoredTagsIndex | null> {
   const raw = await getJSON<unknown>(repoTagsKey(owner, repo));
@@ -23,8 +28,7 @@ export async function buildTagsIndex(
   const accumulator = [...seedTags];
   let cursor = fromCursor;
 
-  // Cap iterations to defend against pathological repos.
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < MAX_WALK_ITERATIONS; i++) {
     const page = await walkReleaseTags(owner, repo, cursor);
     if (!page.ok) return page;
 

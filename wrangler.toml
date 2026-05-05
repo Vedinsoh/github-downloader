@@ -1,0 +1,64 @@
+name = "githubdl"
+main = "worker.ts"
+compatibility_date = "2025-05-05"
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+workers_dev = false
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[observability]
+enabled = true
+
+# Self-reference service binding required by OpenNext caching.
+# See https://opennext.js.org/cloudflare/caching
+[[services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "githubdl"
+
+# KV — application data store (releases blob, tags index)
+[[kv_namespaces]]
+binding = "KV_RELEASES"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# R2 — OpenNext incremental cache
+[[r2_buckets]]
+binding = "NEXT_INC_CACHE_R2_BUCKET"
+bucket_name = "githubdl-inc-cache"
+
+# D1 — OpenNext tag cache
+[[d1_databases]]
+binding = "NEXT_TAG_CACHE_D1"
+database_name = "githubdl-tag-cache"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Durable Objects — OpenNext revalidation queue
+[[durable_objects.bindings]]
+name = "NEXT_CACHE_DO_QUEUE"
+class_name = "DOQueueHandler"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DOQueueHandler"]
+
+# Workers Rate Limiting bindings
+[[unsafe.bindings]]
+name = "RATE_LIMIT_GENERAL"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 60, period = 60 }
+
+[[unsafe.bindings]]
+name = "RATE_LIMIT_VERSION"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }
+
+# Workers Analytics Engine — download_click custom events
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "githubdl_events"
+
+[vars]
+NEXT_PUBLIC_CF_ANALYTICS_TOKEN = ""

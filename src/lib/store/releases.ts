@@ -10,7 +10,7 @@ import {
   repoTagsKey,
   setJSON,
   UnavailableError,
-} from "./redis";
+} from "./kv";
 import { storedReleaseSetSchema, type StoredRelease, type StoredReleaseSet } from "./schemas";
 import { CHUNK_SIZE, PAGE_SIZE, sliceForPage } from "./slice";
 import { ensureTagsIndex, getTagsIndex, mergeNewTags } from "./tags-index";

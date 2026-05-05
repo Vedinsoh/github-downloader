@@ -21,7 +21,7 @@ import React from "react";
 import { BetaToggle } from "@/components/beta-toggle";
 import { links } from "@/lib/constants/links";
 
-const MAX_PAGE = 100;
+const MAX_PAGE = 20;
 
 type Params = { owner: string; repo: string };
 type SearchParams = { page?: string; beta?: string };

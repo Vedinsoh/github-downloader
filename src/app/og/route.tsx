@@ -3,8 +3,6 @@ import { ownerSchema, repoSchema } from "@/lib/parse-input";
 import { fetchRepo } from "@/lib/github/client";
 import { links } from "@/lib/constants/links";
 
-export const runtime = "edge";
-
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const owner = url.searchParams.get("owner") ?? "";

@@ -1,6 +1,5 @@
 "use client";
 
-import { track } from "@vercel/analytics";
 import { Download } from "lucide-react";
 import { Button } from "./ui/button";
 import { OS_ICONS, OS_LABELS, type Os } from "@/lib/classify-asset";
@@ -36,13 +35,15 @@ export function DownloadButton({
   ...rest
 }: Props) {
   function onClick() {
-    track("download_click", {
+    if (typeof navigator === "undefined" || !navigator.sendBeacon) return;
+    const payload = JSON.stringify({
       repo,
       asset_name: assetName,
       os,
       is_source: Boolean(isSource),
       mode: mode ?? "os-build",
     });
+    navigator.sendBeacon("/api/track/download", new Blob([payload], { type: "application/json" }));
   }
 
   if (variant === "primary") {

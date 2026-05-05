@@ -12,9 +12,14 @@ Domain: `githubdl.com`. Routes: `githubdl.com/{owner}/{repo}` → releases; `…
 - Tailwind v4 + shadcn/ui
 - Zod 4 — input parsing, route segment validation, GitHub API response shape
 - pnpm
-- Vercel Pro hosting (Node runtime for pages, Edge for `/og` and proxy)
-- `@upstash/redis` + `@upstash/ratelimit` — rate limiter (60 req/60s per IP, sliding window)
-- `@vercel/analytics` + `@vercel/speed-insights` — privacy-first analytics, no cookies
+- **Cloudflare Workers Paid** hosting via `@opennextjs/cloudflare`
+- **Cloudflare KV** (`KV_RELEASES`) — application source-of-truth for releases blob + tags index
+- **Cloudflare R2** (`NEXT_INC_CACHE_R2_BUCKET`) — OpenNext incremental cache (backs `unstable_cache`)
+- **Cloudflare D1** (`NEXT_TAG_CACHE_D1`) — OpenNext tag cache (powers `revalidateTag`)
+- **Durable Objects** (`NEXT_CACHE_DO_QUEUE` → `DOQueueHandler`) — OpenNext revalidation queue
+- **Workers Rate Limiting bindings** (`RATE_LIMIT_GENERAL` 60/60s, `RATE_LIMIT_VERSION` 10/60s) — gating in Worker entry shim
+- **Workers Analytics Engine** (`ANALYTICS` → `githubdl_events`) — `download_click` custom event
+- **Cloudflare Web Analytics** — cookieless pageviews + RUM (no consent banner needed)
 - Vitest — pure-function unit tests only
 
 ## Architecture
@@ -24,24 +29,25 @@ Domain: `githubdl.com`. Routes: `githubdl.com/{owner}/{repo}` → releases; `…
 Three-layer read path:
 
 ```
-Request
+Request → Worker entry shim (rate limit + verified-bot bypass)
   ↓
-Next.js Data Cache (unstable_cache, 6h TTL, tag "repo:{o}/{r}")
+Next.js handler (OpenNext)
+  ↓
+unstable_cache (6h TTL, tag "repo:{o}/{r}", backed by R2 incremental cache)
   ↓ miss
-Upstash Redis (7-day TTL, source-of-truth)
+Cloudflare KV (7-day TTL, source-of-truth)
   ↓ miss / chunk-expansion
 GitHub REST + GraphQL
 ```
 
-Releases are stored in Upstash Redis as the source-of-truth (`StoredReleaseSet` per
+Releases are stored in Cloudflare KV as the source-of-truth (`StoredReleaseSet` per
 repo: 30 releases per chunk, plus singleton merges from `/v/{tag}` deep-links).
 A separate `StoredTagsIndex` walks all release tag names via the GraphQL API so
 that `/v/{unknown-tag}` short-circuits without a GitHub round-trip. `unstable_cache`
 sits in front of both reads with a 6h TTL, tagged by `repo:{owner}/{repo}` so that
-future on-demand invalidation can use `revalidateTag` + `redis.del` together.
+on-demand invalidation can use `revalidateTag` (D1 tag cache) + `kv.delete()` together.
 
-`fetchRepo` (repo metadata) stays in Next.js Data Cache only — no Redis layer.
-TTL is 6h.
+`fetchRepo` (repo metadata) stays in `unstable_cache` only — no KV layer. TTL is 6h.
 
 `?beta=show` on the repo page is the URL-only toggle for prerelease visibility.
 Cache key includes `includeBetas` so the two views are cached separately. Pages
@@ -50,10 +56,14 @@ with `?beta=show` are `noindex`.
 ### File map
 
 ```
+worker.ts                            Worker entry shim — rate limit + verified-bot bypass, then OpenNext
+worker-env.d.ts                      ambient types for the OpenNext-generated worker bundle
+open-next.config.ts                  OpenNext config — R2 incremental, DO queue, D1 tag cache
+wrangler.toml                        Wrangler config — bindings, DO migrations, rate-limit namespaces
 src/
   app/
-    layout.tsx                       root layout, fonts, analytics, theme script (no navbar)
-    not-found.tsx                    global 404 page (renders <Navbar showSearch={false} />)
+    layout.tsx                       root layout, fonts, CF Web Analytics beacon, theme script
+    not-found.tsx                    global 404 page
     actions.ts                       server action: parse paste → redirect
     (home)/layout.tsx                <Navbar showSearch={false} /> wrapper
     (home)/page.tsx                  homepage (hero + form)
@@ -61,8 +71,8 @@ src/
     (app)/[owner]/[repo]/page.tsx    releases list, paginated, ?beta=show toggle
     (app)/[owner]/[repo]/v/[version]/ version deep-link page (noindex)
     (app)/about|privacy|terms/page.tsx static legal pages
-    og/route.tsx                     OG image (Edge ImageResponse, no version)
-    api/internal/redis-health/       hourly cron health check (Bearer auth)
+    og/route.tsx                     OG image (Node runtime ImageResponse, no version)
+    api/track/download/route.ts      POST endpoint for sendBeacon download_click → Workers AE
     robots.ts                        robots.txt generator
   components/
     ui/                              shadcn primitives
@@ -70,7 +80,7 @@ src/
     repo-link-form.tsx               client form (useActionState), used by homepage + not-found
     repo-header.tsx
     release-card.tsx                 orchestrates per-release UI
-    download-button.tsx              client; fires download_click
+    download-button.tsx              client; fires sendBeacon('/api/track/download', ...)
     other-downloads.tsx              collapsed section, grouped by OS
     beta-toggle.tsx                  client; useSearchParams + router.replace
     error-states.tsx                 busy/notfound/no-releases/version-notfound/unavailable
@@ -85,15 +95,14 @@ src/
       graphql.ts                     ghGraphQL + walkReleaseTags (tag-name walker)
     store/
       schemas.ts                     StoredAsset / StoredRelease / StoredReleaseSet / StoredTagsIndex (Zod)
-      redis.ts                       Upstash client wrapper, UnavailableError, getJSON/setJSON, OOM-soft-fail
+      kv.ts                          Cloudflare KV wrapper, UnavailableError, getJSON/setJSON
       to-stored.ts                   Release → StoredRelease (drops fields, filters skippables)
       merge.ts                       merge-by-tag, sort by date desc
       slice.ts                       windowed pagination over chunks*30
       latest-stable.ts               computeLatestStable + pickLatest (stable-first, then any)
       releases.ts                    getReleasesPage + getReleaseByTag + getOrSeedBlob
       resolve-latest.ts              resolveLatestTag (alias for /v/latest)
-      tags-index.ts                  getTagsIndex + buildTagsIndex + mergeNewTags
-  proxy.ts                           Next.js 16 "proxy" (was middleware) — rate limiter
+      tags-index.ts                  getTagsIndex + buildTagsIndex (capped at 20 walks) + mergeNewTags
 ```
 
 ### Routing & validation
@@ -102,7 +111,7 @@ Catch-all `[owner]/[repo]` validates against:
 
 - `ownerSchema` (GitHub username regex + reserved-name denylist: `api`, `about`, `privacy`, `terms`, `og`, `_next`, `favicon.ico`, `robots.txt`, `sitemap.xml`)
 - `repoSchema` (GitHub repo regex, no `.` or `..`)
-- `?page` clamped 1..50; out-of-range → 404
+- `?page` clamped 1..20; out-of-range → 404 (low cap; non-technical audience never paginates deep, and high `N` was a cache-busting abuse vector)
 - `versionSchema` (1..255, no control chars)
 
 Invalid → `notFound()`. Reserved owner names → `notFound()`.
@@ -122,8 +131,8 @@ are shadowed; this is acceptable for our audience. Paste-input recognizes
 - 5xx → BusyState
 - Empty release list → NoReleasesState
 - Missing tag on `/v/{version}`, confirmed against complete tags-index → VersionNotFoundState (zero GH calls)
-- Redis read failure → TemporarilyUnavailableState (hard-fail)
-- Redis write failure → soft-fail; request continues with in-memory data (logged)
+- KV read failure → TemporarilyUnavailableState (hard-fail)
+- KV write failure → soft-fail; request continues with in-memory data (logged)
 - Hard 404 (invalid route, reserved owner names, invalid version syntax) → `app/not-found.tsx`
 
 ### UX
@@ -150,58 +159,69 @@ OS detection from `User-Agent` header on server. Asset classification from filen
 - Self-canonical to `https://githubdl.com/{owner}/{repo}`
 - Per-page `<title>` and meta description
 - JSON-LD `SoftwareApplication` with `downloadUrl` and `softwareVersion` (only when at least one asset exists)
-- OG image at `/og?owner=…&repo=…` — repo metadata only, no version (cached 24 h)
+- OG image at `/og?owner=…&repo=…` — repo metadata only, no version (cached 24 h via Cloudflare cache rule)
 - `robots.txt` allows root + repo pages, disallows `/api/`, `/og`, `/*?page=`, `/*?beta=`, `/*/v/`
 - `/v/{version}` and pages 2+ are `noindex`
 - No sitemap (infinite URL space)
 
 ### Rate limit & abuse
 
-`src/proxy.ts` runs on every request, gates on Upstash Redis. Local dev without `UPSTASH_REDIS_REST_*` env → no-op (lets through). Verified-bot UA strings (Googlebot, Bingbot, etc.) bypass; full reverse-DNS verification deferred (relies on Vercel Firewall to filter spoofs).
+`worker.ts` (Worker entry shim) runs before OpenNext on every request:
+
+1. Read `request.cf.botManagement.verifiedBot` — if true, skip both limiters.
+2. Else key by `CF-Connecting-IP` → check `RATE_LIMIT_GENERAL` (60/60s).
+3. For paths matching `/^/[^/]+/[^/]+/v//`, additionally check `RATE_LIMIT_VERSION` (10/60s).
+4. On `success: false` → 429 with `Cache-Control: no-store`.
+
+Workers `RateLimit` bindings are eventually-consistent and node-local — fine for our threat model. A second layer of WAF Rate Limiting Rule (1 free slot, 10s window, IP) provides edge-side redundancy before the Worker even runs.
+
+In `pnpm dev` (Next dev mode without Wrangler), the rate limiter has no binding and is implicitly skipped by `worker.ts` — but `worker.ts` itself isn't executed in `next dev`. Use `pnpm dev:worker` to verify limiter behavior end-to-end.
 
 ## Decisions worth knowing
 
 - **Hybrid SSR over client-only fetch.** Browser-side calls would scale infinitely (each user gets their own 60/hr GitHub bucket) but loses share-link OG previews. Discord/Slack unfurl is a key UX → server-render.
 - **Versions excluded from OG metadata.** Caching is simpler, and Discord caches unfurls anyway.
-- **30-min TTL on page 1, 24-hour TTL deeper.** Older releases never change. Sentry alert on `X-RateLimit-Remaining < 500` is the trigger to add an ETag layer if pressure appears (not built in v1).
-- **Vercel KV swapped for `@upstash/redis`.** Vercel KV deprecated; underlying provider is the same.
+- **Cloudflare Workers Paid from day one.** $5/mo ceiling lifts (50 ms CPU, 10 MiB bundle, 10M req/mo). Free tier's 10 ms CPU + 3 MiB cap can't fit OpenNext + Next 16 + `ImageResponse`.
+- **Cloudflare KV over Upstash Redis.** Single-vendor, in-network (~5 ms reads vs ~30 ms cross-region HTTPS), eventually-consistent (≤60 s) acceptable for 7-day TTL data, free tier is generous.
+- **Application data (KV) and Next cache (R2) are separate concerns.** KV stores our domain blobs. R2 stores OpenNext's per-page cache entries. D1 records tag invalidation timestamps. Each layer can fail independently without taking down the others.
+- **Rate limit lives in Worker entry shim, not Next middleware.** The `RateLimit` binding is a Worker-level API; expressing it inside Next would require awkward bridging. OpenNext on Workers does not yet support Next 16's `proxy.ts` (issue opennextjs/opennextjs-cloudflare#962) — Worker-shim approach side-steps that constraint entirely.
 - **No release notes / changelogs.** Audience is non-technical.
-- **No version deep-links suppressed from share-link UX.** The mod-maker / forum-distribution use case relies on `/v/{version}` working, even though it's `noindex`.
-- **Vercel Pro from day one.** Hobby ToS forbids commercial use; ads are planned.
-- **Sentry not yet wired.** Run `pnpm dlx @sentry/wizard@latest -i nextjs` before launch and supply `NEXT_PUBLIC_SENTRY_DSN`. Wizard auto-generates `sentry.{client,server,edge}.config.ts`.
+- **Version deep-links not suppressed from share-link UX.** The mod-maker / forum-distribution use case relies on `/v/{version}` working, even though it's `noindex`.
+- **CF-native observability over Sentry.** Workers Logs + Workers Analytics Engine + Email Alerts cover our needs at zero added cost. Errors that matter already have explicit handling.
+- **Cloudflare Web Analytics + Workers Analytics Engine, no third-party scripts.** No consent banner needed (cookieless), single-vendor, custom `download_click` event written via `sendBeacon` → Worker route → AE binding.
 
 ## Build-time gotchas
 
-- **Next.js 16 renamed `middleware` → `proxy`.** File lives at `src/proxy.ts`, exports a function called `proxy` (not `middleware`). The old name still builds but emits a deprecation warning.
-- **`@vercel/kv` is deprecated.** Use `@upstash/redis` directly with `Redis.fromEnv()`. The Vercel Marketplace integration auto-injects the env vars.
-- **shadcn `init` flags differ from older guides.** Use `-d -t next -b radix --yes --no-monorepo`. There is no `--base-color` flag anymore.
-- **Edge runtime disables static generation** for the route — `/og` correctly opts in via `export const runtime = "edge"` and is `(Dynamic)` in build output. Expected.
+- **Do not rename `src/middleware.ts` → `src/proxy.ts`.** OpenNext on Workers does not yet recognize Next 16's `proxy` export (issue #962). We've removed Next-level middleware entirely; rate-limit logic lives in `worker.ts` instead.
+- **`@opennextjs/cloudflare@1.19.6` requires `next@16.2.4` or higher within the 16.x line** (peer-deps exclude 16.0.0–16.2.2 due to a `loadManifest` regression in those versions). Don't bump Next ahead of OpenNext compat.
+- **`compatibility_flags` must include both `nodejs_compat` and `global_fetch_strictly_public`.** The latter is needed for OpenNext's caching path (per its template).
+- **`compatibility_date >= 2025-05-05`** for `FinalizationRegistry` support (used by OpenNext internals).
+- **`/og` route is Node runtime, not Edge.** OpenNext on Workers steers away from Edge runtime; `ImageResponse` works fine on Node. Do NOT add `export const runtime = "edge"`.
 - **`generateMetadata` and the page receive `params` as a `Promise`** in Next 16 App Router — always `await` before destructuring. Same for `searchParams`.
 - **`useActionState` (not `useFormState`)** for the homepage form — React 19 API, `useFormState` is deprecated.
+- **shadcn `init` flags differ from older guides.** Use `-d -t next -b radix --yes --no-monorepo`. There is no `--base-color` flag anymore.
+- **`worker.ts` imports from `./.open-next/worker.js`**, which only exists after `opennextjs-cloudflare build`. The `worker-env.d.ts` ambient declaration keeps `tsc --noEmit` green when the artifact is absent.
+- **`KV_RELEASES` binding access uses `getCloudflareContext()`** from `@opennextjs/cloudflare`. In `next dev` (no Workers runtime) this returns null and `kv.ts` no-ops the same way the old Upstash wrapper did.
 
 ## Caching contract
 
-| Layer                                  | Key                                                      | TTL | Tag            |
-| -------------------------------------- | -------------------------------------------------------- | --- | -------------- |
-| `unstable_cache` for `getReleasesPage` | `["releases", o, r, String(page), String(includeBetas)]` | 6h  | `repo:{o}/{r}` |
-| `unstable_cache` for `getReleaseByTag` | `["release-tag", o, r, tag]`                             | 6h  | `repo:{o}/{r}` |
-| Redis `repo:{o}/{r}:releases`          | —                                                        | 7d  | —              |
-| Redis `repo:{o}/{r}:tags`              | —                                                        | 7d  | —              |
-| `unstable_cache` for `fetchRepo`       | per Next Data Cache                                      | 6h  | `repo:{o}/{r}` |
+| Layer                                  | Key                                                      | TTL | Tag            | Backend |
+| -------------------------------------- | -------------------------------------------------------- | --- | -------------- | ------- |
+| `unstable_cache` for `getReleasesPage` | `["releases", o, r, String(page), String(includeBetas)]` | 6h  | `repo:{o}/{r}` | R2 (OpenNext) |
+| `unstable_cache` for `getReleaseByTag` | `["release-tag", o, r, tag]`                             | 6h  | `repo:{o}/{r}` | R2 (OpenNext) |
+| `unstable_cache` for `fetchRepo`       | per Next Data Cache                                      | 6h  | `repo:{o}/{r}` | R2 (OpenNext) |
+| KV `repo:{o}/{r}:releases`             | —                                                        | 7d  | —              | KV (`KV_RELEASES`) |
+| KV `repo:{o}/{r}:tags`                 | —                                                        | 7d  | —              | KV (`KV_RELEASES`) |
+| Tag invalidation timestamps            | per tag                                                  | —   | —              | D1 (`NEXT_TAG_CACHE_D1`) |
 
-- Future on-demand refresh = `revalidateTag("repo:{o}/{r}")` + `redis.del("repo:{o}/{r}:releases")` + `redis.del("repo:{o}/{r}:tags")`.
-- Every successful Redis GET runs `EXPIRE key 604800` to refresh the 7-day window for actively-used repos.
+- **On-demand refresh** = `revalidateTag("repo:{o}/{r}")` (drops the R2-backed Next cache entries via D1) + `kv.delete("repo:{o}/{r}:releases")` + `kv.delete("repo:{o}/{r}:tags")`.
+- **Every successful KV write** sets `expirationTtl: 604800` to refresh the 7-day window for actively-used repos.
 - **Never put per-request data into the `fetch()` URL or headers** for GitHub calls — would shatter the Data Cache. The token goes in `Authorization` header, fine because it's identical across requests.
 - The `redirect: "manual"` on `ghFetch` is intentional — we want to _see_ GitHub's 301 and re-emit it as our own redirect to the new canonical path. If you switch to default `redirect: "follow"`, the rename-handling path (`{ kind: "moved" }`) becomes unreachable.
 
-## Upstash eviction
+## Cloudflare KV — write characteristics
 
-Upstash exposes only Eviction: ON/OFF — the underlying algorithm is `optimistic-volatile` (volatile-random + allkeys-random). Every key we write has a 7-day TTL, so the entire keyspace sits in the volatile pool — exactly what `optimistic-volatile` evicts first. We accept that some popular entries may be evicted under pressure; cold-load via `getReleasesPage` re-populates from GitHub. OOM on `SET` is soft-failed (request continues with in-memory data); we do not run a SCAN-and-delete loop.
-
-## Upstash free-tier limits
-
-- Storage: **256 MB** (cap monitored hourly by `/api/internal/redis-health` against `used_memory`).
-- Commands: **500,000/month** (≈16.6k/day average). The legacy 10k/day cap was retired 2025-03-12; only the monthly budget applies. See https://upstash.com/blog/redis-new-pricing.
+KV is eventually consistent globally (≤60 s propagation between datacenters) and strongly consistent within a single edge node. For our 7-day TTL release blobs this is invisible to users — the worst case is a fresh write being momentarily invisible to a different region's reader, which simply triggers a re-fetch from GitHub. KV writes are rate-limited to 1/sec per key by Cloudflare; we never write the same key faster than that pattern. Read failures throw `UnavailableError` → `TemporarilyUnavailableState` (hard-fail load shed). Write failures are logged and swallowed (soft-fail).
 
 ## Asset classifier — how to extend
 
@@ -220,8 +240,13 @@ Upstash exposes only Eviction: ON/OFF — the underlying algorithm is `optimisti
 ## Commands
 
 ```bash
-pnpm dev          # local dev
-pnpm build        # production build
+pnpm dev          # local Next dev (no Workers runtime; KV/limiter no-op)
+pnpm dev:worker   # opennextjs-cloudflare build && wrangler dev (full bindings via Miniflare)
+pnpm preview      # opennextjs-cloudflare build && wrangler dev --remote (against real CF resources)
+pnpm build        # next build (Next-side production build)
+pnpm build:worker # opennextjs-cloudflare build (produces .open-next/worker.js)
+pnpm deploy       # build:worker && wrangler deploy
+pnpm cf-typegen   # regenerate worker-configuration.d.ts from wrangler.toml bindings
 pnpm typecheck    # tsc --noEmit
 pnpm lint         # eslint
 pnpm test         # vitest run
@@ -232,21 +257,24 @@ Always run `pnpm typecheck && pnpm lint && pnpm test && pnpm build` before decla
 
 ## Env vars
 
-- `GITHUB_TOKEN` (server, required for any production use; also used for GraphQL `Authorization: Bearer ${token}`)
-- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (server, optional in dev — rate limiter and store layer no-op without them)
-- `CRON_SECRET` (server, Vercel-managed; used by `/api/internal/redis-health` to reject non-cron callers)
-- `NEXT_PUBLIC_SENTRY_DSN` (when Sentry is wired)
+- `GITHUB_TOKEN` (Worker secret, required for production; `Authorization: Bearer ${token}` for both REST and GraphQL). Provision via `wrangler secret put GITHUB_TOKEN`.
+- `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` (public, set in `[vars]` per env in `wrangler.toml`; controls whether the Cloudflare Web Analytics beacon renders).
+
+In dev: copy `.dev.vars.example` to `.dev.vars` and fill in. `.dev.vars` is gitignored.
 
 ## Pre-launch checklist
 
-Full version with detailed steps lives in `NEXT_STEPS.md`. Quick form:
-
-- [ ] Set `GITHUB_TOKEN` in Vercel project env (sensitive, scope `public_repo`)
-- [ ] Provision Upstash Redis from Vercel Marketplace; env auto-injected
-- [ ] Upstash dashboard: **Eviction: ON**, **Auto Upgrade: OFF** (one-time, manual)
-- [ ] Set `CRON_SECRET` in Vercel project env (used by `/api/internal/redis-health`)
-- [ ] Run Sentry wizard, add DSN env, set `tracesSampleRate: 0.1`
-- [ ] Configure `info@githubdl.com` forwarding (ImprovMX)
-- [ ] Add `githubdl.com` apex + `www` redirect in Vercel domains
-- [ ] Verify Web Analytics + Speed Insights collecting in dashboard
-- [ ] Smoke test: `/redis/redis`, `/godotengine/godot`, `/obsidianmd/obsidian`, `/oven-sh/bun`, a known-archived repo, a known-renamed repo, a 404 repo, `/v/{valid-tag}` deep-link, `/v/{invalid-tag}` deep-link, `/v/latest` (cold cache + warm cache), pasting a `/releases/latest` URL on the homepage
+- [ ] `wrangler kv namespace create KV_RELEASES` — paste id into `wrangler.toml`
+- [ ] `wrangler r2 bucket create githubdl-inc-cache`
+- [ ] `wrangler d1 create githubdl-tag-cache` — paste id into `wrangler.toml`
+- [ ] `wrangler secret put GITHUB_TOKEN` (sensitive, scope `public_repo`)
+- [ ] Cloudflare zone `githubdl.com`: add Workers Route `githubdl.com/*` → `githubdl`
+- [ ] Cloudflare zone: Single Redirect `www.githubdl.com` → `githubdl.com` (301)
+- [ ] Cloudflare zone: enable **Bot Fight Mode**
+- [ ] Cloudflare zone: WAF Rate Limiting Rule (Free, 1 slot) — Managed Challenge when `(http.request.uri.path contains "/v/" and not cf.bot_management.verified_bot)`, IP, period 10s, requests 20
+- [ ] Cloudflare zone: Cache Rule for `/og` — edge cache TTL 24h
+- [ ] Cloudflare Web Analytics: add site, copy beacon token, set `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` per-env in `wrangler.toml`
+- [ ] Cloudflare Email Routing: `info@githubdl.com` → your inbox
+- [ ] Cloudflare Notifications: alert on Workers 5xx rate
+- [ ] GitHub Actions secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+- [ ] Smoke test (via `pnpm preview`): `/redis/redis`, `/godotengine/godot`, `/obsidianmd/obsidian`, `/oven-sh/bun`, a known-archived repo, a known-renamed repo, a 404 repo, `/v/{valid-tag}` deep-link, `/v/{invalid-tag}` deep-link, `/v/latest` (cold + warm), pasting a `/releases/latest` URL on the homepage, `download_click` writes to AE (verify via `wrangler tail` or AE SQL), burst-refresh trips `RATE_LIMIT_GENERAL`
