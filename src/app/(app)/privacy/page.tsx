@@ -12,32 +12,74 @@ export default function PrivacyPage() {
     <>
       <main className="prose dark:prose-invert mx-auto w-full max-w-3xl flex-1 px-6 py-10">
         <h1>Privacy</h1>
-        <p>Last updated: 2026-04-28.</p>
+        <p>Last updated: 5 May 2026</p>
+
+        <p>
+          githubdl is built to do as little with your data as possible. We don&rsquo;t use cookies,
+          we don&rsquo;t have user accounts, and we don&rsquo;t run third-party advertising or
+          tracking scripts.
+        </p>
 
         <h2>What we collect</h2>
         <p>
-          We use Vercel Web Analytics and Vercel Speed Insights to understand aggregate traffic.
-          These tools do not use cookies and do not collect personal data. We see counts of
-          pageviews, referrers, and approximate location at the country level.
+          <strong>Cloudflare Web Analytics</strong> records cookieless pageviews and basic
+          performance metrics (referrer, approximate country, browser type) so we can see how the
+          site is being used in aggregate. It does not set cookies, does not fingerprint visitors,
+          and does not identify you personally.
         </p>
         <p>
-          We use Sentry to monitor errors. When something breaks, Sentry stores the URL path,
-          browser type, and a stack trace for up to 90 days so we can fix it.
+          <strong>Download click events.</strong> When you click a download button, your browser
+          sends a small beacon to our server with the repository, the file name, and the operating
+          system we surfaced. This is stored in Cloudflare Workers Analytics Engine in aggregate
+          form so we can see which downloads are popular. The beacon does not include your IP, your
+          identity, or any cookies.
         </p>
-
-        <h2>What we don&rsquo;t collect</h2>
         <p>
-          We don&rsquo;t store any user accounts. We don&rsquo;t sell or share data. We don&rsquo;t
-          fingerprint visitors.
+          <strong>Server logs.</strong> Like any website hosted on Cloudflare, request metadata (IP
+          address, user agent, URL path, timestamp) is processed transiently to serve the request
+          and is retained according to Cloudflare&rsquo;s standard logging policies.
+        </p>
+        <p>
+          <strong>Rate limiting.</strong> We use your IP address (via the{" "}
+          <code>CF-Connecting-IP</code> header) to apply per-visitor rate limits on a sliding
+          window. This is legitimate-interest processing for abuse prevention. The IP itself is not
+          stored long-term &mdash; only an in-memory counter against the current window.
         </p>
 
-        <h2>Files</h2>
-        <p>Downloads come directly from GitHub. We never see, proxy, or store file contents.</p>
+        <h2>What we don&rsquo;t do</h2>
+        <ul>
+          <li>No user accounts and no login.</li>
+          <li>No cookies and no cross-site tracking.</li>
+          <li>No fingerprinting.</li>
+          <li>No third-party advertising or analytics scripts.</li>
+          <li>We do not sell or share your data with anyone.</li>
+        </ul>
+
+        <h2>Files you download</h2>
+        <p>
+          Every download link points directly to GitHub&rsquo;s servers. We never see, proxy, or
+          store the contents of any file you download. What happens once you click through is
+          governed by GitHub&rsquo;s privacy policy and the publisher of the file.
+        </p>
+
+        <h2>GitHub API access</h2>
+        <p>
+          To fetch public release information, we make authenticated requests to GitHub&rsquo;s REST
+          and GraphQL APIs from our server. The token used is held server-side only and never
+          reaches your browser. No part of your visit is forwarded to GitHub.
+        </p>
 
         <h2>Your data</h2>
         <p>
-          Since we don&rsquo;t store personal data, there&rsquo;s nothing to delete on request. If
-          you have questions, email <a href={`mailto:${links.app.email}`}>{links.app.email}</a>.
+          Because we don&rsquo;t store personal data tied to your visit, there&rsquo;s nothing for
+          us to look up, export, or delete on request. If you have questions, email{" "}
+          <a href={`mailto:${links.app.email}`}>{links.app.email}</a>.
+        </p>
+
+        <h2>Changes</h2>
+        <p>
+          We may update this page as the site evolves (for example, if we add a new analytics
+          surface). The date at the top reflects the most recent change.
         </p>
       </main>
       <SiteFooter />

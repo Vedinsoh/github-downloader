@@ -11,7 +11,7 @@ export default function HomePage() {
           <span className="bg-linear-to-r from-fuchsia-700 to-red-400 bg-clip-text font-extrabold text-transparent">
             easiest
           </span>{" "}
-          way to download GitHub files.
+          way to download GitHub apps.
         </h1>
         <p className="text-muted-foreground mt-4 text-lg">Paste any GitHub project link below.</p>
         <div className="mt-10">

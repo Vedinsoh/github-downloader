@@ -218,7 +218,10 @@ function Pagination({
   return (
     <nav className="flex items-center justify-between border-t pt-6 text-sm">
       {page > 1 ? (
-        <Link href={`/${owner}/${repo}${page - 1 === 1 ? betaOnly : `?page=${page - 1}${beta}`}`}>
+        <Link
+          href={`/${owner}/${repo}${page - 1 === 1 ? betaOnly : `?page=${page - 1}${beta}`}`}
+          prefetch={false}
+        >
           <Button variant="ghost">← Newer versions</Button>
         </Link>
       ) : (
@@ -226,7 +229,7 @@ function Pagination({
       )}
       <span className="text-muted-foreground">Page {page}</span>
       {hasMore && page < MAX_PAGE ? (
-        <Link href={`/${owner}/${repo}?page=${page + 1}${beta}`}>
+        <Link href={`/${owner}/${repo}?page=${page + 1}${beta}`} prefetch={false}>
           <Button variant="ghost">Older versions →</Button>
         </Link>
       ) : (
