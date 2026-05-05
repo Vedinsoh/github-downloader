@@ -16,9 +16,10 @@ export default function AboutPage() {
           githubdl is a friendlier interface to GitHub releases. Paste any repository link and
           you&rsquo;ll get the downloads — no clutter, no confusion.
         </p>
+        <p>We don&rsquo;t host any files. Every download link points directly to GitHub.</p>
         <p>
-          We don&rsquo;t host any files. Every download link points directly to GitHub. We are not
-          affiliated with GitHub.
+          githubdl is an independent project. Not affiliated with or endorsed by GitHub, Inc.
+          &ldquo;GitHub&rdquo; is a trademark of GitHub, Inc.
         </p>
         <p>
           If you have a question or need to report something, email{" "}

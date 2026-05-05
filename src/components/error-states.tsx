@@ -5,7 +5,7 @@ export function NotFoundState({ message }: { message: string }) {
   return (
     <div className="space-y-4 py-10 text-center">
       <p className="text-lg">{message}</p>
-      <Link href="/">
+      <Link href="/" prefetch={false}>
         <Button variant="outline">Back to homepage</Button>
       </Link>
     </div>
@@ -42,7 +42,7 @@ export function VersionNotFoundState({ ownerRepo }: { ownerRepo: string }) {
   return (
     <div className="space-y-4 py-10 text-center">
       <p className="text-lg">This version does not exist.</p>
-      <Link href={`/${ownerRepo}`}>
+      <Link href={`/${ownerRepo}`} prefetch={false}>
         <Button variant="outline" size="lg">
           See all versions
         </Button>

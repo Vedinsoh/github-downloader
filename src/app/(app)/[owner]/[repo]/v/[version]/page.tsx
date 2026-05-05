@@ -118,7 +118,7 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
           visitorOs={visitorOs}
           deviceClass={deviceClass}
         />
-        <Link href={`/${owner}/${repo}`} className="flex justify-center">
+        <Link href={`/${owner}/${repo}`} className="flex justify-center" prefetch={false}>
           <Button variant="outline" size="lg">
             See all versions
           </Button>
