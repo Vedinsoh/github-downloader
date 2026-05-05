@@ -2,9 +2,7 @@ name = "githubdl"
 main = ".open-next/worker.js"
 compatibility_date = "2025-05-05"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
-# Enabled during pre-launch smoke testing. Flip to false after the
-# Workers Route on githubdl.com/* is wired up to disable the *.workers.dev URL.
-workers_dev = true
+workers_dev = false
 
 [assets]
 directory = ".open-next/assets"
