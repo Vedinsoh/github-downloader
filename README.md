@@ -8,7 +8,17 @@
 
 ---
 
-## Just want to use it?
+## How it works?
+
+Simply add `dl` after `github` in any GitHub repo URL:
+
+> github.com becomes -> github`dl`.com
+
+Try me!
+
+> https://githubdl.com/Vedinsoh/github-downloader
+
+Or...
 
 Go to **[githubdl.com](https://githubdl.com)** and paste any GitHub repo link
 (e.g. `https://github.com/obsidianmd/obsidian`). You'll land on a clean page
@@ -24,15 +34,12 @@ Direct shapes also work:
 
 - Auto-detects your OS from the User-Agent and surfaces the matching download
   as the primary action.
-- Groups other-OS downloads in a collapsed section, so they're one click away
-  but don't crowd the page.
-- Hides signature/checksum files; tucks `Source code` archives under a
-  "for developers" toggle.
+- Groups other-OS downloads in a collapsed section, so they're one click away.
+- Hides unnecessary files, surfaces only actual program files.
 - Beta toggle (`?beta=show`) for repos where the latest release is a
   pre-release.
 - Share-link previews: `/{owner}/{repo}` URLs unfurl with an Open Graph image
   on Discord, Slack, Twitter, etc.
-- Follows GitHub renames silently (301 → new canonical path).
 
 ## How it's built
 
@@ -98,5 +105,5 @@ license for details.
 
 ---
 
-<sub>githubdl.com is an independent project, not affiliated with or endorsed by
+<sub>githubdl.com is not affiliated with or endorsed by
 GitHub, Inc. "GitHub" is a trademark of GitHub, Inc.</sub>
