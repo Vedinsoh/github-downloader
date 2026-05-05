@@ -1,3 +1,0 @@
-{
-  "crons": [{ "path": "/api/internal/redis-health", "schedule": "0 * * * *" }]
-}
