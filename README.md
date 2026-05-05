@@ -10,15 +10,13 @@
 
 ## How it works?
 
-Simply add `dl` after `github` in any GitHub repo URL:
+Simply add `dl` after `github` in any GitHub repo URL: <br />
+<ins>github.com/...</ins> becomes -> <ins>github`dl`.com/...</ins>
 
-> github.com becomes -> github`dl`.com
+Try me! <br />
+https://githubdl.com/Vedinsoh/github-downloader
 
-Try me!
-
-> https://githubdl.com/Vedinsoh/github-downloader
-
-Or...
+**Or...**
 
 Go to **[githubdl.com](https://githubdl.com)** and paste any GitHub repo link
 (e.g. `https://github.com/obsidianmd/obsidian`). You'll land on a clean page
