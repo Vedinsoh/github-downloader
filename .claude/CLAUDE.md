@@ -60,7 +60,7 @@ open-next.config.ts                  OpenNext config — R2 incremental, DO queu
 wrangler.toml                        Wrangler config — bindings, DO migrations, rate-limit namespaces (main = ".open-next/worker.js")
 src/
   app/
-    layout.tsx                       root layout, fonts, CF Web Analytics beacon, theme script
+    layout.tsx                       root layout, fonts, theme script (CF Web Analytics is auto-instrumented at edge — no JS beacon)
     not-found.tsx                    global 404 page
   middleware.ts                      Next 15-style middleware — rate limit + verified-bot bypass via getCloudflareContext()
     actions.ts                       server action: parse paste → redirect
@@ -262,7 +262,7 @@ Always run `pnpm typecheck && pnpm lint && pnpm test && pnpm build` before decla
 ## Env vars
 
 - `GITHUB_TOKEN` (Worker secret, required for production; `Authorization: Bearer ${token}` for both REST and GraphQL). Provision via `wrangler secret put GITHUB_TOKEN`.
-- `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` (public, set in `[vars]` per env in `wrangler.toml`; controls whether the Cloudflare Web Analytics beacon renders).
+- *(No `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` needed — Cloudflare Web Analytics is auto-instrumented at the edge for proxied domains; no JS beacon required.)*
 
 In dev: copy `.dev.vars.example` to `.dev.vars` and fill in. `.dev.vars` is gitignored.
 
@@ -277,7 +277,7 @@ In dev: copy `.dev.vars.example` to `.dev.vars` and fill in. `.dev.vars` is giti
 - [ ] Cloudflare zone: enable **Bot Fight Mode**
 - [ ] Cloudflare zone: WAF Rate Limiting Rule (Free, 1 slot) — Managed Challenge when `(http.request.uri.path contains "/v/" and not cf.bot_management.verified_bot)`, IP, period 10s, requests 20
 - [ ] Cloudflare zone: Cache Rule for `/og` — edge cache TTL 24h
-- [ ] Cloudflare Web Analytics: add site, copy beacon token, set `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` per-env in `wrangler.toml`
+- [ ] Cloudflare Web Analytics: add site (auto-instrumented at edge, no token / no JS beacon required for proxied domains)
 - [ ] Cloudflare Email Routing: `info@githubdl.com` → your inbox
 - [ ] Cloudflare Notifications: alert on Workers 5xx rate
 - [ ] GitHub Actions secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
