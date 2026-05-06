@@ -64,6 +64,3 @@ simple = { limit = 10, period = 60 }
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
 dataset = "githubdl_events"
-
-[vars]
-NEXT_PUBLIC_CF_ANALYTICS_TOKEN = ""
