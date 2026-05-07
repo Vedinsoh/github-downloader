@@ -1,24 +1,18 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ownerSchema, repoSchema, versionSchema } from "@/lib/parse-input";
-import { fetchRepo } from "@/lib/github/client";
 import { getReleaseByTag } from "@/lib/store/releases";
 import { resolveLatestTag } from "@/lib/store/resolve-latest";
+import { resolveRepoRoute, type FetcherResult } from "@/lib/route/resolve-repo-route";
+import type { StoredRelease } from "@/lib/store/schemas";
 import { hydrateRelease } from "@/lib/build-download-url";
 import { detectDeviceClassFromUserAgent, detectOsFromUserAgent } from "@/lib/detect-os";
 import { ReleaseCard } from "@/components/release-card";
 import { RepoHeader } from "@/components/repo-header";
-import {
-  BusyState,
-  NoReleasesState,
-  NotFoundState,
-  TemporarilyUnavailableState,
-  VersionNotFoundState,
-} from "@/components/error-states";
+import { NoReleasesState, VersionNotFoundState } from "@/components/error-states";
 import { SiteFooter } from "@/components/site-footer";
 import { links } from "@/lib/constants/links";
-import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -44,64 +38,40 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
   const tag = decodeVersion(version);
   if (!tag || !versionSchema.safeParse(tag).success) notFound();
 
-  const repoResult = await fetchRepo(owner, repo);
-  if (!repoResult.ok) {
-    if (repoResult.error.kind === "moved") {
-      redirect(`/${repoResult.error.owner}/${repoResult.error.repo}/v/${version}`);
-    }
-    return renderError(owner, repo, repoResult.error.kind);
-  }
+  const isLatest = tag.toLowerCase() === "latest";
+  const ownerRepo = `${owner}/${repo}`;
 
-  const canonicalOwner = repoResult.data.owner.login;
-  const canonicalRepo = repoResult.data.name;
-  if (
-    (owner !== canonicalOwner && owner.toLowerCase() === canonicalOwner.toLowerCase()) ||
-    (repo !== canonicalRepo && repo.toLowerCase() === canonicalRepo.toLowerCase())
-  ) {
-    redirect(`/${canonicalOwner}/${canonicalRepo}/v/${version}`);
-  }
+  const resolved = await resolveRepoRoute<StoredRelease>({
+    owner,
+    repo,
+    fetchData: isLatest
+      ? async () => {
+          const result = await resolveLatestTag(owner, repo);
+          if (result.ok) {
+            return {
+              kind: "redirect",
+              to: `/${owner}/${repo}/v/${encodeURIComponent(result.tag)}`,
+            } satisfies FetcherResult<StoredRelease>;
+          }
+          if (result.error.kind === "no_releases") {
+            return { kind: "error", error: { kind: "not_found" } };
+          }
+          return { kind: "error", error: result.error };
+        }
+      : async () => {
+          const result = await getReleaseByTag(owner, repo, tag);
+          if (result.ok) {
+            return { kind: "render", data: result.release };
+          }
+          return { kind: "error", error: result.error };
+        },
+    rebuildUrl: (o, r) => `/${o}/${r}/v/${version}`,
+    notFoundNode: isLatest ? <NoReleasesState /> : <VersionNotFoundState ownerRepo={ownerRepo} />,
+  });
 
-  if (tag.toLowerCase() === "latest") {
-    const resolved = await resolveLatestTag(owner, repo);
-    if (resolved.ok) {
-      redirect(`/${owner}/${repo}/v/${encodeURIComponent(resolved.tag)}`);
-    }
-    if (resolved.error.kind === "no_releases") {
-      return (
-        <>
-          <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
-            <RepoHeader repo={repoResult.data} />
-            <NoReleasesState />
-          </main>
-          <SiteFooter />
-        </>
-      );
-    }
-    if (resolved.error.kind === "moved") {
-      redirect(`/${resolved.error.owner}/${resolved.error.repo}/v/latest`);
-    }
-    return renderError(owner, repo, resolved.error.kind);
-  }
+  if (resolved.kind === "rendered") return resolved.node;
 
-  const releaseResult = await getReleaseByTag(owner, repo, tag);
-  if (!releaseResult.ok) {
-    const ownerRepo = `${owner}/${repo}`;
-    if (releaseResult.error.kind === "not_found") {
-      return (
-        <>
-          <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
-            <RepoHeader repo={repoResult.data} />
-            <VersionNotFoundState ownerRepo={ownerRepo} />
-          </main>
-          <SiteFooter />
-        </>
-      );
-    }
-    if (releaseResult.error.kind === "moved") {
-      redirect(`/${releaseResult.error.owner}/${releaseResult.error.repo}/v/${version}`);
-    }
-    return renderError(owner, repo, releaseResult.error.kind);
-  }
+  const { repo: repoData, data: release } = resolved;
 
   const ua = (await headers()).get("user-agent");
   const visitorOs = detectOsFromUserAgent(ua);
@@ -110,9 +80,9 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
   return (
     <>
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
-        <RepoHeader repo={repoResult.data} />
+        <RepoHeader repo={repoData} />
         <ReleaseCard
-          release={hydrateRelease(owner, repo, releaseResult.release)}
+          release={hydrateRelease(owner, repo, release)}
           owner={owner}
           repo={repo}
           visitorOs={visitorOs}
@@ -124,23 +94,6 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
           </Button>
         </Link>
       </main>
-      <SiteFooter />
-    </>
-  );
-}
-
-function renderError(owner: string, repo: string, kind: string) {
-  let body: React.ReactNode;
-  if (kind === "not_found") {
-    body = <NotFoundState message={`We couldn't find a repository called "${owner}/${repo}".`} />;
-  } else if (kind === "unavailable") {
-    body = <TemporarilyUnavailableState />;
-  } else {
-    body = <BusyState />;
-  }
-  return (
-    <>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">{body}</main>
       <SiteFooter />
     </>
   );
