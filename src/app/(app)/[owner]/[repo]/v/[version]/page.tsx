@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ownerSchema, repoSchema, versionSchema } from "@/lib/parse-input";
-import { getReleaseByTag } from "@/lib/store/releases";
-import { resolveLatestTag } from "@/lib/store/resolve-latest";
+import { getLatestTag, getReleaseByTag } from "@/lib/store/releases";
 import { resolveRepoRoute, type FetcherResult } from "@/lib/route/resolve-repo-route";
 import type { StoredRelease } from "@/lib/store/schemas";
 import { hydrateRelease } from "@/lib/build-download-url";
@@ -46,7 +45,7 @@ export default async function VersionPage({ params }: { params: Promise<Params> 
     repo,
     fetchData: isLatest
       ? async () => {
-          const result = await resolveLatestTag(owner, repo);
+          const result = await getLatestTag(owner, repo);
           if (result.ok) {
             return {
               kind: "redirect",
