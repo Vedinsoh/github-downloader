@@ -1,20 +1,17 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ownerSchema, repoSchema } from "@/lib/parse-input";
 import { fetchRepo } from "@/lib/github/client";
 import { getReleasesPage } from "@/lib/store/releases";
+import { resolveRepoRoute, type FetcherResult } from "@/lib/route/resolve-repo-route";
+import type { StoredRelease } from "@/lib/store/schemas";
 import { hydrateForRender, hydrateRelease } from "@/lib/build-download-url";
 import { detectDeviceClassFromUserAgent, detectOsFromUserAgent } from "@/lib/detect-os";
 import { ReleaseCard } from "@/components/release-card";
 import { RepoHeader } from "@/components/repo-header";
-import {
-  BusyState,
-  NoReleasesState,
-  NotFoundState,
-  TemporarilyUnavailableState,
-} from "@/components/error-states";
+import { NoReleasesState } from "@/components/error-states";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/ui/button";
 import React from "react";
@@ -25,6 +22,12 @@ const MAX_PAGE = 20;
 
 type Params = { owner: string; repo: string };
 type SearchParams = { page?: string; beta?: string };
+
+type ReleasesData = {
+  releases: StoredRelease[];
+  hasMore: boolean;
+  latestStable: StoredRelease | null;
+};
 
 export async function generateMetadata({
   params,
@@ -93,37 +96,36 @@ export default async function RepoPage({
   if (page === null) notFound();
 
   const includeBetas = sp.beta === "show";
+  const querySuffix = buildQueryString(sp);
 
-  const repoResult = await fetchRepo(owner, repo);
-  if (!repoResult.ok) {
-    if (repoResult.error.kind === "moved") {
-      redirect(`/${repoResult.error.owner}/${repoResult.error.repo}`);
-    }
-    return renderError(owner, repo, repoResult.error.kind);
-  }
+  const resolved = await resolveRepoRoute<ReleasesData>({
+    owner,
+    repo,
+    fetchData: async () => {
+      const result = await getReleasesPage(owner, repo, page, includeBetas);
+      if (result.ok) {
+        return {
+          kind: "render",
+          data: {
+            releases: result.releases,
+            hasMore: result.hasMore,
+            latestStable: result.latestStable,
+          },
+        } satisfies FetcherResult<ReleasesData>;
+      }
+      return { kind: "error", error: result.error };
+    },
+    rebuildUrl: (o, r) => `/${o}/${r}${querySuffix}`,
+  });
 
-  const canonicalOwner = repoResult.data.owner.login;
-  const canonicalRepo = repoResult.data.name;
-  if (
-    (owner !== canonicalOwner && owner.toLowerCase() === canonicalOwner.toLowerCase()) ||
-    (repo !== canonicalRepo && repo.toLowerCase() === canonicalRepo.toLowerCase())
-  ) {
-    const qs = buildQueryString(sp);
-    redirect(`/${canonicalOwner}/${canonicalRepo}${qs}`);
-  }
+  if (resolved.kind === "rendered") return resolved.node;
 
-  const releasesResult = await getReleasesPage(owner, repo, page, includeBetas);
-  if (!releasesResult.ok) {
-    if (releasesResult.error.kind === "moved") {
-      redirect(`/${releasesResult.error.owner}/${releasesResult.error.repo}`);
-    }
-    return renderError(owner, repo, releasesResult.error.kind);
-  }
+  const { repo: repoData, data } = resolved;
+  const { releases, hasMore, latestStable } = data;
 
   const ua = (await headers()).get("user-agent");
   const visitorOs = detectOsFromUserAgent(ua);
   const deviceClass = detectDeviceClassFromUserAgent(ua);
-  const { releases, hasMore, latestStable } = releasesResult;
   const renderReleases = hydrateForRender(owner, repo, releases);
   const renderLatestStable = latestStable ? hydrateRelease(owner, repo, latestStable) : null;
 
@@ -134,7 +136,7 @@ export default async function RepoPage({
       ? {
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
-          name: repoResult.data.name,
+          name: repoData.name,
           applicationCategory: "DeveloperApplication",
           operatingSystem: "Windows, macOS, Linux",
           softwareVersion: heroRelease.tag,
@@ -146,7 +148,7 @@ export default async function RepoPage({
   return (
     <>
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-6 py-10">
-        <RepoHeader repo={repoResult.data} />
+        <RepoHeader repo={repoData} />
 
         <BetaToggle />
 
@@ -236,23 +238,6 @@ function Pagination({
         <span />
       )}
     </nav>
-  );
-}
-
-function renderError(owner: string, repo: string, kind: string) {
-  let main: React.ReactNode;
-  if (kind === "not_found") {
-    main = <NotFoundState message={`We couldn't find a repository called "${owner}/${repo}".`} />;
-  } else if (kind === "unavailable") {
-    main = <TemporarilyUnavailableState />;
-  } else {
-    main = <BusyState />;
-  }
-  return (
-    <>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">{main}</main>
-      <SiteFooter />
-    </>
   );
 }
 
