@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import type { FetchError } from "@/lib/github/client";
 import { fetchLatestRelease, fetchReleasesChunk, fetchReleaseByTagRaw } from "@/lib/github/client";
-import { computeLatestStable } from "./latest-stable";
+import { computeLatestStable, pickLatest } from "./latest-stable";
 import { mergeReleases } from "./merge";
 import {
   getJSON,
@@ -32,6 +32,10 @@ export type GetReleaseByTagResult =
   | { ok: true; release: StoredRelease }
   | { ok: false; error: FetchError | { kind: "unavailable" } };
 
+export type GetLatestTagResult =
+  | { ok: true; tag: string }
+  | { ok: false; error: FetchError | { kind: "unavailable" } | { kind: "no_releases" } };
+
 async function readBlob(owner: string, repo: string): Promise<StoredReleaseSet | null> {
   const raw = await getJSON<unknown>(repoReleasesKey(owner, repo));
   if (!raw) return null;
@@ -39,11 +43,11 @@ async function readBlob(owner: string, repo: string): Promise<StoredReleaseSet |
   return parsed.success ? parsed.data : null;
 }
 
-export type GetOrSeedBlobResult =
+type GetOrSeedBlobResult =
   | { ok: true; blob: StoredReleaseSet }
   | { ok: false; error: FetchError | { kind: "unavailable" } };
 
-export async function getOrSeedBlob(owner: string, repo: string): Promise<GetOrSeedBlobResult> {
+async function getOrSeedBlob(owner: string, repo: string): Promise<GetOrSeedBlobResult> {
   let initial: StoredReleaseSet | null;
   try {
     initial = await readBlob(owner, repo);
@@ -230,6 +234,25 @@ export async function getReleaseByTag(
   const cached = unstable_cache(
     async () => getReleaseByTagInner(owner, repo, tag),
     ["release-tag", o, r, tag],
+    { revalidate: CACHE_TTL_SECONDS, tags: [repoCacheTag(owner, repo)] },
+  );
+  return cached();
+}
+
+async function getLatestTagInner(owner: string, repo: string): Promise<GetLatestTagResult> {
+  const seeded = await getOrSeedBlob(owner, repo);
+  if (!seeded.ok) return { ok: false, error: seeded.error };
+  const picked = pickLatest(seeded.blob.releases);
+  if (!picked) return { ok: false, error: { kind: "no_releases" } };
+  return { ok: true, tag: picked.tag };
+}
+
+export async function getLatestTag(owner: string, repo: string): Promise<GetLatestTagResult> {
+  const o = owner.toLowerCase();
+  const r = repo.toLowerCase();
+  const cached = unstable_cache(
+    async () => getLatestTagInner(owner, repo),
+    ["latest", o, r],
     { revalidate: CACHE_TTL_SECONDS, tags: [repoCacheTag(owner, repo)] },
   );
   return cached();
