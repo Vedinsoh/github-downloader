@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { RepoLinkForm } from "@/components/repo-link-form";
 import { SiteFooter } from "@/components/site-footer";
+import { links } from "@/lib/constants/links";
+
+export const metadata: Metadata = {
+  alternates: { canonical: links.app.url },
+};
 
 export default function HomePage() {
   return (
