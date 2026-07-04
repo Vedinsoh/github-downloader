@@ -1,13 +1,9 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import type { FetchError } from "@/lib/github/client";
 import { fetchRepo } from "@/lib/github/client";
 import type { Repo } from "@/lib/github/schemas";
-import {
-  BusyState,
-  NotFoundState,
-  TemporarilyUnavailableState,
-} from "@/components/error-states";
+import { BusyState, TemporarilyUnavailableState } from "@/components/error-states";
 import { RepoHeader } from "@/components/repo-header";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -45,8 +41,14 @@ export async function resolveRepoRoute<T>(
     redirect(rebuildUrl(dataResult.error.owner, dataResult.error.repo));
   }
 
+  // Repo doesn't exist on GitHub → real HTTP 404 (app/not-found.tsx), not a 200
+  // with noindex — Search Console flags the latter as "Excluded by 'noindex' tag".
+  if (!repoResult.ok && repoResult.error.kind === "not_found") {
+    notFound();
+  }
+
   if (!repoResult.ok) {
-    return { kind: "rendered", node: renderRepoError(owner, repo, repoResult.error) };
+    return { kind: "rendered", node: renderRepoError() };
   }
 
   const canonicalOwner = repoResult.data.owner.login;
@@ -72,16 +74,12 @@ export async function resolveRepoRoute<T>(
   return { kind: "ok", repo: repoResult.data, data: dataResult.data };
 }
 
-function renderRepoError(owner: string, repo: string, error: FetchError): ReactNode {
-  const inner =
-    error.kind === "not_found" ? (
-      <NotFoundState message={`We couldn't find a repository called "${owner}/${repo}".`} />
-    ) : (
-      <BusyState />
-    );
+function renderRepoError(): ReactNode {
   return (
     <>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">{inner}</main>
+      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+        <BusyState />
+      </main>
       <SiteFooter />
     </>
   );

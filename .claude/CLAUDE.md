@@ -82,7 +82,7 @@ src/
     download-button.tsx              client; fires sendBeacon('/api/track/download', ...)
     other-downloads.tsx              collapsed section, grouped by OS
     beta-toggle.tsx                  client; useSearchParams + router.replace
-    error-states.tsx                 busy/notfound/no-releases/version-notfound/unavailable
+    error-states.tsx                 busy/no-releases/version-notfound/unavailable
   lib/
     parse-input.ts                   Zod schemas + parseRepoInput
     classify-asset.ts                filename → OS + architecture (operates on StoredAsset)
@@ -124,7 +124,7 @@ are shadowed; this is acceptable for our audience. Paste-input recognizes
 
 ### Errors (handled in releases page)
 
-- GitHub 404 → friendly NotFoundState (no private/public distinction; we can't tell)
+- GitHub 404 → `notFound()` → `app/not-found.tsx` with real HTTP 404 status (no private/public distinction; we can't tell). Never render nonexistent repos as 200 + noindex — Search Console reports that as "Excluded by 'noindex' tag"
 - GitHub 301 → server-side redirect to new canonical path
 - 403/429 with `x-ratelimit-remaining=0` → BusyState
 - 5xx → BusyState
