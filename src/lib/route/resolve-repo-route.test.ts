@@ -2,11 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { createElement, type ReactElement, type ReactNode } from "react";
 import type { Repo } from "@/lib/github/schemas";
 import type { FetchResult } from "@/lib/github/client";
-import {
-  BusyState,
-  NotFoundState,
-  TemporarilyUnavailableState,
-} from "@/components/error-states";
+import { BusyState, TemporarilyUnavailableState } from "@/components/error-states";
 import { RepoHeader } from "@/components/repo-header";
 
 vi.mock("next/navigation", () => ({
@@ -179,17 +175,16 @@ describe("resolveRepoRoute", () => {
     ).rejects.toThrow("REDIRECT:/Owner/Repo");
   });
 
-  it("renders NotFoundState without RepoHeader when fetchRepo not_found", async () => {
+  it("throws notFound when fetchRepo not_found", async () => {
     fetchRepoMock.mockResolvedValue(repoErr({ kind: "not_found" }));
-    const result = await resolveRepoRoute<string>({
-      owner: "owner",
-      repo: "repo",
-      fetchData: renderFetcher("x"),
-      rebuildUrl,
-    });
-    if (result.kind !== "rendered") throw new Error("expected rendered");
-    expect(findByType(result.node, NotFoundState)).toBeDefined();
-    expect(findByType(result.node, RepoHeader)).toBeUndefined();
+    await expect(
+      resolveRepoRoute<string>({
+        owner: "owner",
+        repo: "repo",
+        fetchData: renderFetcher("x"),
+        rebuildUrl,
+      }),
+    ).rejects.toThrow("NOT_FOUND");
   });
 
   it("renders BusyState without RepoHeader when fetchRepo rate_limited", async () => {

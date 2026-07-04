@@ -46,6 +46,10 @@ export async function generateMetadata({
   const r = await fetchRepo(owner, repo);
   const canonical = `${links.app.url}/${owner}/${repo}`;
   if (!r.ok) {
+    // Nonexistent repo must be a real HTTP 404, not 200 + noindex (Search Console
+    // reports the latter as "Excluded by 'noindex' tag"). Transient errors keep
+    // the noindex fallback so busy pages never get indexed.
+    if (r.error.kind === "not_found") notFound();
     return {
       title: `${owner}/${repo}`,
       alternates: { canonical },

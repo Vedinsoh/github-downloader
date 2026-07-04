@@ -1,17 +1,6 @@
 import Link from "next/link";
 import { Button } from "./ui/button";
 
-export function NotFoundState({ message }: { message: string }) {
-  return (
-    <div className="space-y-4 py-10 text-center">
-      <p className="text-lg">{message}</p>
-      <Link href="/" prefetch={false}>
-        <Button variant="outline">Back to homepage</Button>
-      </Link>
-    </div>
-  );
-}
-
 export function BusyState() {
   return (
     <div className="space-y-4 py-10 text-center">
