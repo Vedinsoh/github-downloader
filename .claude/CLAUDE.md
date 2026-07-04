@@ -61,12 +61,13 @@ wrangler.toml                        Wrangler config — bindings, DO migrations
 src/
   app/
     layout.tsx                       root layout, fonts, theme script (CF Web Analytics is auto-instrumented at edge — no JS beacon)
-    not-found.tsx                    global 404 page
+    not-found.tsx                    global 404 (unmatched URLs; renders own Navbar — no layout wraps it)
   middleware.ts                      Next 15-style middleware — rate limit + verified-bot bypass via getCloudflareContext()
     actions.ts                       server action: parse paste → redirect
     (home)/layout.tsx                <Navbar showSearch={false} /> wrapper
     (home)/page.tsx                  homepage (hero + form)
     (app)/layout.tsx                 <Navbar /> wrapper (search visible)
+    (app)/not-found.tsx              boundary for notFound() inside (app) — NO Navbar (layout provides it; root not-found here would double it)
     (app)/[owner]/[repo]/page.tsx    releases list, paginated, ?beta=show toggle
     (app)/[owner]/[repo]/v/[version]/ version deep-link page (noindex)
     (app)/about|privacy|terms/page.tsx static legal pages
@@ -76,6 +77,7 @@ src/
   components/
     ui/                              shadcn primitives
     site-footer.tsx
+    not-found-content.tsx            shared 404 body (main + footer), used by both not-found files
     repo-link-form.tsx               client form (useActionState), used by homepage + not-found
     repo-header.tsx
     release-card.tsx                 orchestrates per-release UI
@@ -124,7 +126,7 @@ are shadowed; this is acceptable for our audience. Paste-input recognizes
 
 ### Errors (handled in releases page)
 
-- GitHub 404 → `notFound()` → `app/not-found.tsx` with real HTTP 404 status (no private/public distinction; we can't tell). Never render nonexistent repos as 200 + noindex — Search Console reports that as "Excluded by 'noindex' tag"
+- GitHub 404 → `notFound()` → `app/(app)/not-found.tsx` with real HTTP 404 status (no private/public distinction; we can't tell). Never render nonexistent repos as 200 + noindex — Search Console reports that as "Excluded by 'noindex' tag"
 - GitHub 301 → server-side redirect to new canonical path
 - 403/429 with `x-ratelimit-remaining=0` → BusyState
 - 5xx → BusyState
@@ -132,7 +134,7 @@ are shadowed; this is acceptable for our audience. Paste-input recognizes
 - Missing tag on `/v/{version}`, confirmed against complete tags-index → VersionNotFoundState (zero GH calls)
 - KV read failure → TemporarilyUnavailableState (hard-fail)
 - KV write failure → soft-fail; request continues with in-memory data (logged)
-- Hard 404 (invalid route, reserved owner names, invalid version syntax) → `app/not-found.tsx`
+- Hard 404 (invalid route, reserved owner names, invalid version syntax) → nearest not-found boundary. `notFound()` renders it INSIDE the throwing segment's parent layouts — any not-found boundary reachable from `(app)` must not render its own `<Navbar>` or it doubles with the layout's
 
 ### UX
 
